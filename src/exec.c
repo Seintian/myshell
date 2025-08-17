@@ -25,7 +25,7 @@ ast_node_t *ast_create_command(char **argv) {
     ast_node_t *node = malloc_safe(sizeof(ast_node_t));
     node->type = AST_COMMAND;
     
-    // Duplicate the argv array so we own the memory
+    // Copy the argv array so we own the memory
     if (argv) {
         int argc = string_array_length(argv);
         node->data.command.argv = malloc_safe((argc + 1) * sizeof(char*));

@@ -147,21 +147,40 @@ void test_pipeline_execute_large_count(void);
 void test_pipeline_execute_echo_cat(void);
 void test_pipeline_execute_three_commands(void);
 
+// Global variables to store original file descriptors
+static int original_stdout = -1;
+static int original_stderr = -1;
+static int devnull_fd = -1;
+
 void setUp(void) {
-    // Global setup before each test
+    // Redirect both stdout and stderr before each test to suppress API output
+    original_stdout = dup(STDOUT_FILENO);
+    original_stderr = dup(STDERR_FILENO);
+    devnull_fd = open("/dev/null", O_WRONLY);
+    
+    dup2(devnull_fd, STDOUT_FILENO);
+    dup2(devnull_fd, STDERR_FILENO);
 }
 
 void tearDown(void) {
-    // Global teardown after each test
+    // Restore stdout and stderr after each test
+    if (original_stdout != -1) {
+        dup2(original_stdout, STDOUT_FILENO);
+        close(original_stdout);
+        original_stdout = -1;
+    }
+    if (original_stderr != -1) {
+        dup2(original_stderr, STDERR_FILENO);
+        close(original_stderr);
+        original_stderr = -1;
+    }
+    if (devnull_fd != -1) {
+        close(devnull_fd);
+        devnull_fd = -1;
+    }
 }
 
 int main(void) {
-    // Redirect stderr to /dev/null to suppress API error output during testing
-    int original_stderr = dup(STDERR_FILENO);
-    int devnull = open("/dev/null", O_WRONLY);
-    dup2(devnull, STDERR_FILENO);
-    close(devnull);
-    
     UNITY_BEGIN();
     
     // Lexer tests
@@ -318,10 +337,6 @@ int main(void) {
     RUN_TEST(test_pipeline_execute_large_count);
     RUN_TEST(test_pipeline_execute_echo_cat);
     RUN_TEST(test_pipeline_execute_three_commands);
-    
-    // Restore stderr before exiting
-    dup2(original_stderr, STDERR_FILENO);
-    close(original_stderr);
     
     return UNITY_END();
 }

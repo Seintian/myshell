@@ -44,7 +44,12 @@ static ast_node_t *parse_command(parser_t *parser) {
     }
     
     argv[argc] = NULL;
-    return ast_create_command(argv);
+    ast_node_t *node = ast_create_command(argv);
+    
+    // Free the original argv array since ast_create_command makes a copy
+    free_string_array(argv);
+    
+    return node;
 }
 
 ast_node_t *parser_parse(parser_t *parser) {
