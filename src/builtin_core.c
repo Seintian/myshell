@@ -6,6 +6,7 @@
 #include "env.h"
 #include "jobs.h"
 #include "util.h"
+#include "shell.h"
 
 // Builtin command implementations
 
@@ -31,13 +32,16 @@ int builtin_cd(int argc, char **argv) {
 }
 
 int builtin_exit(int argc, char **argv) {
+    // Store exit code for later use if needed
     int exit_code = 0;
     
     if (argc > 1) {
         exit_code = atoi(argv[1]);
     }
     
-    exit(exit_code);
+    // Set shell_running to 0 to trigger graceful exit
+    shell_running = 0;
+    return exit_code;
 }
 
 int builtin_export(int argc, char **argv) {
@@ -176,6 +180,10 @@ static builtin_t builtins[] = {
 };
 
 builtin_t *builtin_find(const char *name) {
+    if (!name) {
+        return NULL;
+    }
+    
     for (int i = 0; builtins[i].name; i++) {
         if (strcmp(builtins[i].name, name) == 0) {
             return &builtins[i];

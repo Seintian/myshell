@@ -24,7 +24,19 @@ struct ast_node {
 ast_node_t *ast_create_command(char **argv) {
     ast_node_t *node = malloc_safe(sizeof(ast_node_t));
     node->type = AST_COMMAND;
-    node->data.command.argv = argv;
+    
+    // Duplicate the argv array so we own the memory
+    if (argv) {
+        int argc = string_array_length(argv);
+        node->data.command.argv = malloc_safe((argc + 1) * sizeof(char*));
+        for (int i = 0; i < argc; i++) {
+            node->data.command.argv[i] = strdup_safe(argv[i]);
+        }
+        node->data.command.argv[argc] = NULL;
+    } else {
+        node->data.command.argv = NULL;
+    }
+    
     return node;
 }
 
@@ -58,6 +70,11 @@ void ast_free(ast_node_t *node) {
 int exec_command(ast_command_t *cmd) {
     // Cast for simplicity
     ast_node_t *node = (ast_node_t*)cmd;
+    
+    if (!node) {
+        return -1;
+    }
+    
     char **argv = node->data.command.argv;
     
     if (!argv || !argv[0]) {
@@ -65,8 +82,9 @@ int exec_command(ast_command_t *cmd) {
     }
     
     // Check for builtin commands
-    if (builtin_execute(argv[0], string_array_length(argv), argv) == 0) {
-        return 0;
+    int builtin_result = builtin_execute(argv[0], string_array_length(argv), argv);
+    if (builtin_result != -1) {
+        return builtin_result;
     }
     
     // Check for plugin commands
@@ -94,6 +112,10 @@ int exec_pipeline(ast_pipeline_t *pipeline) {
     // Simple pipeline execution
     // This would need proper pipe setup in a real implementation
     ast_node_t *node = (ast_node_t*)pipeline;
+    
+    if (!node) {
+        return -1;
+    }
     
     // For now, just execute left then right
     int result = exec_ast(node->data.pipeline.left);

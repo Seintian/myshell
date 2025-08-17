@@ -68,6 +68,10 @@ int term_cooked_mode(void) {
 }
 
 int term_get_size(int *rows, int *cols) {
+    if (!rows || !cols) {
+        return -1;
+    }
+    
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1) {
         perror("ioctl");

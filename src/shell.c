@@ -12,7 +12,7 @@
 #include "env.h"
 #include "term.h"
 
-static int shell_running = 1;
+int shell_running = 1;
 
 void shell_init(void) {
     // Initialize terminal
@@ -34,6 +34,7 @@ int shell_main(int argc __attribute__((unused)), char **argv __attribute__((unus
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
+    int exit_code = 0;
     
     while (shell_running) {
         printf("myshell> ");
@@ -59,7 +60,7 @@ int shell_main(int argc __attribute__((unused)), char **argv __attribute__((unus
         // Parse the command
         ast_node_t *ast = parser_parse(parser);
         if (ast) {
-            exec_ast(ast);
+            exit_code = exec_ast(ast);
             ast_free(ast);
         }
         
@@ -67,6 +68,8 @@ int shell_main(int argc __attribute__((unused)), char **argv __attribute__((unus
         lexer_free(lexer);
     }
     
-    free(line);
-    return 0;
+    if (line) {
+        free(line);
+    }
+    return exit_code;
 }

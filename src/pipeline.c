@@ -6,7 +6,7 @@
 #include "exec.h"
 
 int pipeline_execute(ast_node_t **commands, int count) {
-    if (count <= 0) return -1;
+    if (count <= 0 || !commands) return -1;
     if (count == 1) return exec_ast(commands[0]);
     
     int pipes[count - 1][2];
