@@ -1,5 +1,8 @@
 # My Shell
 
+[![Docs](https://img.shields.io/badge/docs-website-blue)](https://seintian.github.io/myshell/)
+[![Build Docs](https://github.com/Seintian/myshell/actions/workflows/docs.yml/badge.svg)](https://github.com/Seintian/myshell/actions/workflows/docs.yml)
+
 ```tree
 shell/
     include/
@@ -38,3 +41,17 @@ shell/
     tests/
         ...
 ```
+
+## Documentation
+
+Build API and architecture docs locally:
+
+```sh
+make docs
+```
+
+Then open docs/html/index.html in your browser.
+
+Online docs (GitHub Pages):
+
+- [seintian.github.io/myshell](https://seintian.github.io/myshell/)
