@@ -1,0 +1,29 @@
+## Doxyfile for MyShell
+PROJECT_NAME           = "MyShell"
+PROJECT_BRIEF          = "A minimal shell with plugins, builtins, and a simple AST/exec pipeline"
+OUTPUT_DIRECTORY       = docs
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+RECURSIVE              = YES
+INPUT                  = include src README.md docs
+FILE_PATTERNS          = *.h *.c *.md *.dox
+USE_MDFILE_AS_MAINPAGE = README.md
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+JAVADOC_AUTOBRIEF      = YES
+OPTIMIZE_OUTPUT_FOR_C  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+ALIASES                = "retval=\\par Return value:"
+BUILTIN_STL_SUPPORT    = YES
+QUIET                  = YES
+GENERATE_TREEVIEW      = YES
+FULL_PATH_NAMES        = NO
+INLINE_INHERITED_MEMB  = YES
+SORT_BRIEF_DOCS        = YES
+SORT_MEMBER_DOCS       = YES
+SORT_GROUP_NAMES       = YES
+SORT_BY_SCOPE_NAME     = YES
+HAVE_DOT               = NO

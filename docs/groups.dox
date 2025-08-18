@@ -1,0 +1,18 @@
+/** \page modules Modules
+
+Use these module group tags to navigate the API:
+- \ref group_shell
+- \ref group_exec
+- \ref group_ast
+- \ref group_lexer
+- \ref group_parser
+- \ref group_pipeline
+- \ref group_redir
+- \ref group_env
+- \ref group_builtin
+- \ref group_plugin
+- \ref group_term
+- \ref group_jobs
+- \ref group_evloop
+
+*/

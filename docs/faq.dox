@@ -1,0 +1,15 @@
+/** \page faq Troubleshooting / FAQ
+
+- Why do I see "execvp: No such file or directory"?  
+  The shell attempted to exec an external command that could not be resolved via PATH.
+
+- How do I add a builtin?  
+  Implement `int mycmd(int argc, char **argv)` and either add it to the core table or register it at runtime via `builtin_register`.
+
+- How do I load a plugin?  
+  Build a shared object that exposes `plugin_info_t *get_plugin_info(void)` and call `plugin_load("./myplugin.so")`.
+
+- How do I suppress output in tests?  
+  The test runner redirects stdout/stderr in setUp/tearDown. Use a similar pattern in your own tests to silence APIs while preserving Unity output.
+
+*/

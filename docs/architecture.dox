@@ -1,0 +1,47 @@
+/** \page architecture Project Architecture
+
+# Overview
+
+MyShell is a minimal interactive shell composed of the following layers:
+
+- Input/REPL (shell): prints prompt, reads lines, manages lifecycle via `shell_init`, `shell_main`, `shell_cleanup`.
+- Lexing (lexer): converts raw input into a stream of tokens (`token_t`).
+- Parsing (parser): consumes tokens to build an AST (`ast_node_t`).
+- Execution (exec): dispatches builtins, plugins, or external programs.
+- Pipelines/redirection (pipeline, redir): composes processes and file descriptors.
+- Environment (env): reads/sets variables, performs `$VAR` expansion.
+- Terminal (term): screen control and signal handling.
+- Jobs (jobs): minimal foreground/background job management.
+- Event loop (evloop): portable select/epoll abstraction (optional for future async features).
+
+# Data Flow
+
+1. The REPL reads a line using `getline`.
+2. The lexer produces a sequence of tokens.
+3. The parser builds an AST: either a simple command or a pipeline.
+4. The executor resolves the command:
+   - builtin -> executes in-process,
+   - plugin  -> calls a dynamic module,
+   - external -> `fork` + `execvp`.
+5. The return code of the last executed command becomes the shell's status.
+
+# Error Handling
+
+- Memory allocation helpers (`*_safe`) abort on out-of-memory.
+- External command failures return non-zero statuses and print errors.
+- Many APIs accept NULL and return error codes instead of crashing.
+
+# Ownership Rules
+
+- AST creation functions copy argv arrays; caller owns original buffers.
+- Parser returns ASTs owned by the caller; free with `ast_free`.
+- Redirection objects own filenames; free with `redir_free`.
+- `split_string` returns arrays that must be freed with `free_string_array`.
+
+# Extensibility
+
+- Builtins: add functions and register them.
+- Plugins: build shared objects exposing `get_plugin_info` and load with `plugin_load`.
+- New syntax: extend the lexer/parser and update the AST/executor.
+
+*/

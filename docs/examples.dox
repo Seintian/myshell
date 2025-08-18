@@ -1,0 +1,84 @@
+/** \page examples Examples
+
+# Lex → Parse → Exec
+
+```c
+#include "lexer.h"
+#include "parser.h"
+#include "exec.h"
+
+int run_line(const char *line) {
+  lexer_t *lx = lexer_create(line);
+  parser_t *ps = parser_create(lx);
+  ast_node_t *ast = parser_parse(ps);
+  int rc = 0;
+  if (ast) {
+    rc = exec_ast(ast);
+    ast_free(ast);
+  }
+  parser_free(ps);
+  lexer_free(lx);
+  return rc;
+}
+```
+
+# Redirection
+
+```c
+#include "redir.h"
+#include <unistd.h>
+
+void redirect_stdout_to_file(void) {
+  redir_t *r = redir_create(REDIR_OUTPUT, STDOUT_FILENO, "/tmp/out.txt");
+  if (redir_setup(r) == 0) {
+    // printf goes to /tmp/out.txt now
+  }
+  redir_cleanup(r);
+  redir_free(r);
+}
+```
+
+# Event Loop
+
+```c
+#include "evloop.h"
+#include <unistd.h>
+#include <stdio.h>
+
+static void on_stdin(int fd, void *data) {
+  (void)data;
+  printf("stdin is ready! fd=%d\n", fd);
+}
+
+void run_loop(void) {
+  evloop_t *loop = evloop_create();
+  evloop_add_fd(loop, STDIN_FILENO, EVLOOP_READ, on_stdin, NULL);
+  evloop_run(loop, 5000); // 5s
+  evloop_free(loop);
+}
+```
+
+# Minimal Plugin Skeleton
+
+```c
+#include "plugin.h"
+
+static int hello_exec(int argc, char **argv) {
+  (void)argc; (void)argv;
+  printf("hello from plugin!\n");
+  return 0;
+}
+
+static plugin_info_t info = {
+  .name = "hello",
+  .version = "1.0.0",
+  .description = "example",
+  .init = NULL,
+  .execute = hello_exec,
+  .cleanup = NULL,
+};
+
+plugin_info_t *get_plugin_info(void) { return &info; }
+```
+
+*/
