@@ -5,3 +5,7 @@
 # Ignore build artifacts
 bin/
 build/
+
+# Ignore Doxygen documentation
+docs/html/
+docs/latex/

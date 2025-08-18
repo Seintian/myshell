@@ -1,5 +1,5 @@
-#include "unity.h"
 #include "env.h"
+#include "unity.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,7 +19,7 @@ void test_env_get_nonexistent(void) {
 void test_env_set_and_get(void) {
     int result = env_set("TEST_VAR", "test_value");
     TEST_ASSERT_EQUAL(0, result);
-    
+
     char *value = env_get("TEST_VAR");
     TEST_ASSERT_NOT_NULL(value);
     TEST_ASSERT_EQUAL_STRING("test_value", value);
@@ -30,11 +30,11 @@ void test_env_unset(void) {
     env_set("TEST_UNSET", "temp_value");
     char *value = env_get("TEST_UNSET");
     TEST_ASSERT_NOT_NULL(value);
-    
+
     // Now unset it
     int result = env_unset("TEST_UNSET");
     TEST_ASSERT_EQUAL(0, result);
-    
+
     // Should be NULL now
     value = env_get("TEST_UNSET");
     TEST_ASSERT_NULL(value);
@@ -42,11 +42,11 @@ void test_env_unset(void) {
 
 void test_expand_variables_simple(void) {
     env_set("TEST_EXPAND", "hello");
-    
+
     char *result = expand_variables("$TEST_EXPAND world");
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL_STRING("hello world", result);
-    
+
     free(result);
 }
 
@@ -54,7 +54,7 @@ void test_expand_variables_no_expansion(void) {
     char *result = expand_variables("no variables here");
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL_STRING("no variables here", result);
-    
+
     free(result);
 }
 

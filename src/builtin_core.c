@@ -1,18 +1,22 @@
+/**
+ * @file builtin_core.c
+ * @brief Core builtin implementations (cd, exit, env, jobs, type, etc.).
+ */
+#include "builtin.h"
+#include "env.h"
+#include "jobs.h"
+#include "shell.h"
+#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "builtin.h"
-#include "env.h"
-#include "jobs.h"
-#include "util.h"
-#include "shell.h"
 
 // Builtin command implementations
 
 int builtin_cd(int argc, char **argv) {
     const char *path;
-    
+
     if (argc < 2) {
         path = env_get("HOME");
         if (!path) {
@@ -22,23 +26,23 @@ int builtin_cd(int argc, char **argv) {
     } else {
         path = argv[1];
     }
-    
+
     if (chdir(path) != 0) {
         perror("cd");
         return 1;
     }
-    
+
     return 0;
 }
 
 int builtin_exit(int argc, char **argv) {
     // Store exit code for later use if needed
     int exit_code = 0;
-    
+
     if (argc > 1) {
         exit_code = atoi(argv[1]);
     }
-    
+
     // Set shell_running to 0 to trigger graceful exit
     shell_running = 0;
     return exit_code;
@@ -49,7 +53,7 @@ int builtin_export(int argc, char **argv) {
         env_print();
         return 0;
     }
-    
+
     for (int i = 1; i < argc; i++) {
         char *eq = strchr(argv[i], '=');
         if (eq) {
@@ -70,7 +74,7 @@ int builtin_export(int argc, char **argv) {
             }
         }
     }
-    
+
     return 0;
 }
 
@@ -79,64 +83,66 @@ int builtin_unset(int argc, char **argv) {
         fprintf(stderr, "unset: missing variable name\n");
         return 1;
     }
-    
+
     for (int i = 1; i < argc; i++) {
         if (env_unset(argv[i]) != 0) {
             perror("unset");
             return 1;
         }
     }
-    
+
     return 0;
 }
 
-int builtin_pwd(int argc __attribute__((unused)), char **argv __attribute__((unused))) {
+int builtin_pwd(int argc __attribute__((unused)),
+                char **argv __attribute__((unused))) {
     char *cwd = getcwd(NULL, 0);
     if (!cwd) {
         perror("pwd");
         return 1;
     }
-    
+
     printf("%s\n", cwd);
     free(cwd);
     return 0;
 }
 
-int builtin_jobs(int argc __attribute__((unused)), char **argv __attribute__((unused))) {
+int builtin_jobs(int argc __attribute__((unused)),
+                 char **argv __attribute__((unused))) {
     job_list();
     return 0;
 }
 
 int builtin_fg(int argc, char **argv) {
     int job_id = 1; // Default to job 1
-    
+
     if (argc > 1) {
         job_id = atoi(argv[1]);
     }
-    
+
     job_t *job = job_find(job_id);
     if (!job) {
         fprintf(stderr, "fg: job %d not found\n", job_id);
         return 1;
     }
-    
+
     job_fg(job);
     return 0;
 }
 
 int builtin_bg(int argc, char **argv) {
     int job_id = 1; // Default to job 1
-    
+
     if (argc > 1) {
         job_id = atoi(argv[1]);
     }
-    
+
     job_t *job = job_find(job_id);
     if (!job) {
         fprintf(stderr, "bg: job %d not found\n", job_id);
         return 1;
     }
-    
+
     job_bg(job);
     return 0;
 }
@@ -146,7 +152,7 @@ int builtin_type(int argc, char **argv) {
         fprintf(stderr, "type: missing argument\n");
         return 1;
     }
-    
+
     for (int i = 1; i < argc; i++) {
         if (builtin_find(argv[i])) {
             printf("%s is a shell builtin\n", argv[i]);
@@ -161,7 +167,7 @@ int builtin_type(int argc, char **argv) {
             }
         }
     }
-    
+
     return 0;
 }
 
@@ -176,14 +182,13 @@ static builtin_t builtins[] = {
     {"fg", builtin_fg, "Bring job to foreground"},
     {"bg", builtin_bg, "Put job in background"},
     {"type", builtin_type, "Display command type"},
-    {NULL, NULL, NULL}
-};
+    {NULL, NULL, NULL}};
 
 builtin_t *builtin_find(const char *name) {
     if (!name) {
         return NULL;
     }
-    
+
     for (int i = 0; builtins[i].name; i++) {
         if (strcmp(builtins[i].name, name) == 0) {
             return &builtins[i];

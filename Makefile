@@ -187,6 +187,7 @@ help:
 	@echo "  memcheck-simple - Basic memory allocation analysis"
 	@echo "  asan        - Build with AddressSanitizer (alternative to valgrind)"
 	@echo "  format      - Format code with clang-format"
+	@echo "  docs        - Generate Doxygen documentation into docs/"
 	@echo "  help        - Show this help message"
 	@echo ""
 	@echo "Environment variables:"
@@ -259,15 +260,21 @@ memcheck: $(TARGET)
 		echo "Valgrind not found. Install valgrind to run memory checks."; \
 	fi
 
-# Code formatting (if clang-format is available)
+# Code formatting (if clang-format is available) + whitespace cleanup
 format:
 	@if command -v clang-format >/dev/null 2>&1; then \
-		echo "Formatting code..."; \
-		find $(SRCDIR) $(INCDIR) -name "*.c" -o -name "*.h" | xargs clang-format -i; \
-		echo "Code formatting complete"; \
+		echo "Formatting code with clang-format..."; \
+		find $(SRCDIR) $(INCDIR) $(TESTDIR) $(PLUGINDIR) \( -name "*.c" -o -name "*.h" \) -print0 | xargs -0 clang-format -i; \
 	else \
-		echo "clang-format not found. Install clang-format to format code."; \
+		echo "clang-format not found. Skipping clang-format step."; \
 	fi
+	@echo "Normalizing blank lines (removing whitespace-only lines)..."; \
+	# Clean whitespace-only lines to make blank lines truly empty in sources/headers/tests/plugins
+	find $(SRCDIR) $(INCDIR) $(TESTDIR) $(PLUGINDIR) -type f \( -name "*.c" -o -name "*.h" \) -print0 \
+		| xargs -0 sed -i -E 's/^[[:space:]]+$$//'; \
+	# Also clean README if present
+	if [ -f README.md ]; then sed -i -E 's/^[[:space:]]+$$//' README.md; fi; \
+	echo "Whitespace cleanup complete"
 
 # Simple memory check without valgrind (basic static analysis)
 memcheck-simple: $(TARGET)
@@ -291,3 +298,13 @@ asan: clean all
 	@echo "Set ASAN_OPTIONS=abort_on_error=1 to stop on first error."
 
 .PHONY: all clean distclean run test debug release install uninstall plugins tests help status check create-test memcheck memcheck-simple asan format
+
+# Documentation
+docs:
+	@if command -v doxygen >/dev/null 2>&1; then \
+		echo "Generating Doxygen documentation..."; \
+		doxygen Doxyfile; \
+		echo "Docs generated in docs/html"; \
+	else \
+		echo "Doxygen not found. Install doxygen to generate docs."; \
+	fi

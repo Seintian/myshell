@@ -1,15 +1,20 @@
+/**
+ * @file util.c
+ * @brief Utility helpers for memory, strings, paths, and debugging.
+ */
+#include "util.h"
+#include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <ctype.h>
 #include <sys/stat.h>
-#include "util.h"
+#include <unistd.h>
 
 char *strdup_safe(const char *str) {
-    if (!str) return NULL;
-    
+    if (!str)
+        return NULL;
+
     size_t len = strlen(str);
     char *copy = malloc_safe(len + 1);
     strcpy(copy, str);
@@ -17,34 +22,36 @@ char *strdup_safe(const char *str) {
 }
 
 char **split_string(const char *str, const char *delim) {
-    if (!str || !delim) return NULL;
-    
+    if (!str || !delim)
+        return NULL;
+
     char *str_copy = strdup_safe(str);
     char **result = NULL;
     int count = 0;
     int capacity = 8;
-    
-    result = malloc_safe(capacity * sizeof(char*));
-    
+
+    result = malloc_safe(capacity * sizeof(char *));
+
     char *token = strtok(str_copy, delim);
     while (token) {
         if (count >= capacity - 1) {
             capacity *= 2;
-            result = realloc_safe(result, capacity * sizeof(char*));
+            result = realloc_safe(result, capacity * sizeof(char *));
         }
-        
+
         result[count++] = strdup_safe(token);
         token = strtok(NULL, delim);
     }
-    
+
     result[count] = NULL;
     free(str_copy);
     return result;
 }
 
 void free_string_array(char **array) {
-    if (!array) return;
-    
+    if (!array)
+        return;
+
     for (int i = 0; array[i]; i++) {
         free(array[i]);
     }
@@ -52,8 +59,9 @@ void free_string_array(char **array) {
 }
 
 size_t string_array_length(char **array) {
-    if (!array) return 0;
-    
+    if (!array)
+        return 0;
+
     size_t count = 0;
     while (array[count]) {
         count++;
@@ -80,40 +88,44 @@ void *realloc_safe(void *ptr, size_t size) {
 }
 
 char *resolve_path(const char *path) {
-    if (!path) return NULL;
-    
+    if (!path)
+        return NULL;
+
     // If path contains '/', it's a path, return as-is
     if (strchr(path, '/')) {
         return strdup_safe(path);
     }
-    
+
     // Search in PATH
     char *path_env = getenv("PATH");
-    if (!path_env) return NULL;
-    
+    if (!path_env)
+        return NULL;
+
     char **paths = split_string(path_env, ":");
-    if (!paths) return NULL;
-    
+    if (!paths)
+        return NULL;
+
     for (int i = 0; paths[i]; i++) {
         size_t len = strlen(paths[i]) + strlen(path) + 2;
         char *full_path = malloc_safe(len);
         snprintf(full_path, len, "%s/%s", paths[i], path);
-        
+
         if (is_executable(full_path)) {
             free_string_array(paths);
             return full_path;
         }
-        
+
         free(full_path);
     }
-    
+
     free_string_array(paths);
     return NULL;
 }
 
 int is_executable(const char *path) {
-    if (!path) return 0;
-    
+    if (!path)
+        return 0;
+
     struct stat st;
     if (stat(path, &st) == 0) {
         return (st.st_mode & S_IXUSR) != 0;

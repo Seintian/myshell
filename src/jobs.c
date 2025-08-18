@@ -1,12 +1,16 @@
+/**
+ * @file jobs.c
+ * @brief Minimal job control: list, fg/bg, and cleanup.
+ */
 #define _GNU_SOURCE
+#include "jobs.h"
+#include "util.h"
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/wait.h>
-#include <signal.h>
-#include "jobs.h"
-#include "util.h"
+#include <unistd.h>
 
 struct job {
     int id;
@@ -16,7 +20,9 @@ struct job {
     struct job *next;
 };
 
+/** Head of the job list. */
 static job_t *job_list_head = NULL;
+/** Monotonic counter for job IDs. */
 static int next_job_id = 1;
 
 job_t *job_create(pid_t pgid, const char *command) {
@@ -41,10 +47,18 @@ void job_list(void) {
     while (current) {
         const char *status_str;
         switch (current->status) {
-            case JOB_RUNNING: status_str = "Running"; break;
-            case JOB_STOPPED: status_str = "Stopped"; break;
-            case JOB_DONE: status_str = "Done"; break;
-            default: status_str = "Unknown"; break;
+        case JOB_RUNNING:
+            status_str = "Running";
+            break;
+        case JOB_STOPPED:
+            status_str = "Stopped";
+            break;
+        case JOB_DONE:
+            status_str = "Done";
+            break;
+        default:
+            status_str = "Unknown";
+            break;
         }
         printf("[%d] %s\t%s\n", current->id, status_str, current->command);
         current = current->next;
@@ -67,11 +81,11 @@ void job_fg(job_t *job) {
         // Send SIGCONT to the process group
         kill(-job->pgid, SIGCONT);
         job->status = JOB_RUNNING;
-        
+
         // Wait for the job to finish or stop
         int status;
         waitpid(job->pgid, &status, WUNTRACED);
-        
+
         if (WIFSTOPPED(status)) {
             job->status = JOB_STOPPED;
         } else {
@@ -92,7 +106,7 @@ void job_bg(job_t *job) {
 void job_cleanup(void) {
     job_t *current = job_list_head;
     job_t *prev = NULL;
-    
+
     while (current) {
         if (current->status == JOB_DONE) {
             if (prev) {

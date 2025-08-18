@@ -1,7 +1,7 @@
 #include "unity.h"
+#include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 // Include all test modules (declare their test functions)
 // Lexer tests
@@ -125,11 +125,13 @@ void test_shell_init(void);
 void test_shell_cleanup(void);
 void test_shell_init_cleanup_multiple(void);
 void test_shell_running_variable(void);
-void test_shell_main_null_argv(void);
-void test_shell_main_zero_argc(void);
-void test_shell_main_normal_args(void);
-void test_shell_main_with_script(void);
-void test_shell_main_invalid_args(void);
+void test_shell_main_eof_returns_zero(void);
+void test_shell_main_runs_simple_command(void);
+void test_shell_main_exit_stops_loop(void);
+void test_shell_main_nonexistent_command_returns_zero(void);
+void test_shell_main_multiline_script_last_status(void);
+void test_shell_main_handles_empty_lines(void);
+void test_shell_main_does_not_start_when_running_false(void);
 void test_shell_state_consistency(void);
 void test_shell_double_init(void);
 void test_shell_double_cleanup(void);
@@ -157,7 +159,7 @@ void setUp(void) {
     original_stdout = dup(STDOUT_FILENO);
     original_stderr = dup(STDERR_FILENO);
     devnull_fd = open("/dev/null", O_WRONLY);
-    
+
     dup2(devnull_fd, STDOUT_FILENO);
     dup2(devnull_fd, STDERR_FILENO);
 }
@@ -182,7 +184,7 @@ void tearDown(void) {
 
 int main(void) {
     UNITY_BEGIN();
-    
+
     // Lexer tests
     printf("=== Running Lexer Tests ===\n");
     RUN_TEST(test_lexer_create_and_free);
@@ -192,14 +194,14 @@ int main(void) {
     RUN_TEST(test_lexer_pipe_token);
     RUN_TEST(test_lexer_redirection_tokens);
     RUN_TEST(test_lexer_special_characters);
-    
+
     // Parser tests
     printf("=== Running Parser Tests ===\n");
     RUN_TEST(test_parser_create_and_free);
     RUN_TEST(test_parser_simple_command);
     RUN_TEST(test_parser_empty_input);
     RUN_TEST(test_parser_pipeline);
-    
+
     // Environment tests
     printf("=== Running Environment Tests ===\n");
     RUN_TEST(test_env_get_existing);
@@ -208,7 +210,7 @@ int main(void) {
     RUN_TEST(test_env_unset);
     RUN_TEST(test_expand_variables_simple);
     RUN_TEST(test_expand_variables_no_expansion);
-    
+
     // Utility tests
     printf("=== Running Utility Tests ===\n");
     RUN_TEST(test_strdup_safe);
@@ -218,7 +220,7 @@ int main(void) {
     RUN_TEST(test_string_array_length);
     RUN_TEST(test_string_array_length_empty);
     RUN_TEST(test_string_array_length_null);
-    
+
     // Jobs tests
     printf("=== Running Jobs Tests ===\n");
     RUN_TEST(test_job_create);
@@ -231,7 +233,7 @@ int main(void) {
     RUN_TEST(test_job_list_empty);
     RUN_TEST(test_job_cleanup_empty);
     RUN_TEST(test_job_multiple_create);
-    
+
     // Execution tests
     printf("=== Running Execution Tests ===\n");
     RUN_TEST(test_exec_ast_null);
@@ -243,7 +245,7 @@ int main(void) {
     RUN_TEST(test_exec_pipeline_creation);
     RUN_TEST(test_exec_empty_command);
     RUN_TEST(test_exec_builtin_simulation);
-    
+
     // Builtin tests
     printf("=== Running Builtin Tests ===\n");
     RUN_TEST(test_builtin_find_existing);
@@ -259,7 +261,7 @@ int main(void) {
     RUN_TEST(test_builtin_unset);
     RUN_TEST(test_builtin_type);
     RUN_TEST(test_builtin_find_all_core_builtins);
-    
+
     // Plugin tests
     printf("=== Running Plugin Tests ===\n");
     RUN_TEST(test_plugin_load_null_path);
@@ -276,7 +278,7 @@ int main(void) {
     RUN_TEST(test_plugin_load_existing_hello);
     RUN_TEST(test_plugin_load_relative_path);
     RUN_TEST(test_plugin_multiple_operations);
-    
+
     // Redirection tests
     printf("=== Running Redirection Tests ===\n");
     RUN_TEST(test_redir_create_input);
@@ -292,7 +294,7 @@ int main(void) {
     RUN_TEST(test_redir_invalid_fd);
     RUN_TEST(test_redir_large_fd);
     RUN_TEST(test_redir_all_types);
-    
+
     // Terminal tests
     printf("=== Running Terminal Tests ===\n");
     RUN_TEST(test_term_get_size);
@@ -308,23 +310,25 @@ int main(void) {
     RUN_TEST(test_term_restore_signals);
     RUN_TEST(test_term_signal_transitions);
     RUN_TEST(test_term_combined_operations);
-    
+
     // Shell tests
     printf("=== Running Shell Tests ===\n");
     RUN_TEST(test_shell_init);
     RUN_TEST(test_shell_cleanup);
     RUN_TEST(test_shell_init_cleanup_multiple);
     RUN_TEST(test_shell_running_variable);
-    RUN_TEST(test_shell_main_null_argv);
-    RUN_TEST(test_shell_main_zero_argc);
-    RUN_TEST(test_shell_main_normal_args);
-    RUN_TEST(test_shell_main_with_script);
-    RUN_TEST(test_shell_main_invalid_args);
+    RUN_TEST(test_shell_main_eof_returns_zero);
+    RUN_TEST(test_shell_main_runs_simple_command);
+    RUN_TEST(test_shell_main_exit_stops_loop);
+    RUN_TEST(test_shell_main_nonexistent_command_returns_zero);
+    RUN_TEST(test_shell_main_multiline_script_last_status);
+    RUN_TEST(test_shell_main_handles_empty_lines);
+    RUN_TEST(test_shell_main_does_not_start_when_running_false);
     RUN_TEST(test_shell_state_consistency);
     RUN_TEST(test_shell_double_init);
     RUN_TEST(test_shell_double_cleanup);
     RUN_TEST(test_shell_cleanup_without_init);
-    
+
     // Pipeline tests
     printf("=== Running Pipeline Tests ===\n");
     RUN_TEST(test_pipeline_execute_null_commands);
@@ -337,6 +341,6 @@ int main(void) {
     RUN_TEST(test_pipeline_execute_large_count);
     RUN_TEST(test_pipeline_execute_echo_cat);
     RUN_TEST(test_pipeline_execute_three_commands);
-    
+
     return UNITY_END();
 }

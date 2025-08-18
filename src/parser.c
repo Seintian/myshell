@@ -1,11 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
+/**
+ * @file parser.c
+ * @brief Simple recursive-descent parser for commands and pipelines.
+ */
 #include "parser.h"
 #include "util.h"
+#include <stdio.h>
+#include <stdlib.h>
 
+/** Parser state holding input lexer and current token. */
 struct parser {
-    lexer_t *lexer;
-    token_t *current_token;
+    lexer_t *lexer;         /**< Source token stream. */
+    token_t *current_token; /**< Lookahead token. */
 };
 
 parser_t *parser_create(lexer_t *lexer) {
@@ -25,30 +30,30 @@ static ast_node_t *parse_command(parser_t *parser) {
     char **argv = NULL;
     int argc = 0;
     int capacity = 8;
-    
-    argv = malloc_safe(capacity * sizeof(char*));
-    
+
+    argv = malloc_safe(capacity * sizeof(char *));
+
     while (parser->current_token->type == TOKEN_WORD) {
         if (argc >= capacity - 1) {
             capacity *= 2;
-            argv = realloc_safe(argv, capacity * sizeof(char*));
+            argv = realloc_safe(argv, capacity * sizeof(char *));
         }
-        
+
         argv[argc++] = strdup_safe(parser->current_token->value);
         advance_token(parser);
     }
-    
+
     if (argc == 0) {
         free(argv);
         return NULL;
     }
-    
+
     argv[argc] = NULL;
     ast_node_t *node = ast_create_command(argv);
-    
+
     // Free the original argv array since ast_create_command makes a copy
     free_string_array(argv);
-    
+
     return node;
 }
 
@@ -56,12 +61,12 @@ ast_node_t *parser_parse(parser_t *parser) {
     if (parser->current_token->type == TOKEN_EOF) {
         return NULL;
     }
-    
+
     ast_node_t *left = parse_command(parser);
     if (!left) {
         return NULL;
     }
-    
+
     // Handle pipes
     while (parser->current_token->type == TOKEN_PIPE) {
         advance_token(parser);
@@ -72,7 +77,7 @@ ast_node_t *parser_parse(parser_t *parser) {
         }
         left = ast_create_pipeline(left, right);
     }
-    
+
     return left;
 }
 
