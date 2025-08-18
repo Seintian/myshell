@@ -14,6 +14,12 @@
  * the "exit" builtin sets ::shell_running to 0. The return value of
  * shell_main() is the status of the last executed command (0 if nothing
  * was executed, or if the last command succeeded).
+ *
+ * Non-interactive mode: If a script file is provided, the shell reads and
+ * executes lines from that file without prompts. The script is executed in
+ * the current shell (so builtins affect the shell state). Options:
+ *  -e: exit immediately on command error (non-zero status)
+ *  -x: print commands as they are executed (trace)
  */
 #ifndef SHELL_H
 #define SHELL_H
@@ -29,6 +35,15 @@
  * Thread-safety: Not thread-safe; intended for single-threaded use.
  */
 extern int shell_running;
+
+/** Whether the shell is running interactively (prints prompts, job control). */
+extern int shell_interactive;
+
+/** If non-zero, exit immediately when a command returns non-zero (set -e). */
+extern int shell_flag_errexit;
+
+/** If non-zero, print commands as they are executed (set -x). */
+extern int shell_flag_xtrace;
 
 /**
  * @brief Shell entry point invoked by main(). Starts the REPL.
@@ -53,6 +68,25 @@ extern int shell_running;
  * @endcode
  */
 int shell_main(int argc, char **argv);
+
+/**
+ * @brief Execute commands from a file path in non-interactive mode.
+ *
+ * Shebang (#!) on the first line is ignored. Commands run in the current
+ * shell context (builtins affect variables). Honors shell_flag_errexit and
+ * shell_flag_xtrace.
+ *
+ * @param path Path to the script file to execute.
+ * @return Last command status, or first failing status when -e is set;
+ *         127 if the file cannot be opened.
+ */
+int shell_run_file(const char *path);
+
+/** Toggle shell options (used by the 'set' builtin and CLI flags). */
+void shell_set_errexit(int on);
+void shell_set_xtrace(int on);
+int shell_get_errexit(void);
+int shell_get_xtrace(void);
 
 /**
  * @brief Initialize shell subsystems (signals, plugins, builtins).

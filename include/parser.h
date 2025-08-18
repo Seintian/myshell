@@ -1,4 +1,3 @@
-ast_node_t *parser_parse(parser_t *parser);
 /**
  * @file parser.h
  * @brief Parser that builds ASTs from a token stream.

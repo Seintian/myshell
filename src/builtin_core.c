@@ -171,6 +171,25 @@ int builtin_type(int argc, char **argv) {
     return 0;
 }
 
+static int builtin_set(int argc, char **argv) {
+    // Support: set -e | +e | -x | +x
+    if (argc < 2) {
+        printf("errexit=%d xtrace=%d\n", shell_get_errexit(), shell_get_xtrace());
+        return 0;
+    }
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-e") == 0) shell_set_errexit(1);
+        else if (strcmp(argv[i], "+e") == 0) shell_set_errexit(0);
+        else if (strcmp(argv[i], "-x") == 0) shell_set_xtrace(1);
+        else if (strcmp(argv[i], "+x") == 0) shell_set_xtrace(0);
+        else {
+            fprintf(stderr, "set: unsupported option '%s'\n", argv[i]);
+            return 2;
+        }
+    }
+    return 0;
+}
+
 // Builtin registry
 static builtin_t builtins[] = {
     {"cd", builtin_cd, "Change directory"},
@@ -182,6 +201,7 @@ static builtin_t builtins[] = {
     {"fg", builtin_fg, "Bring job to foreground"},
     {"bg", builtin_bg, "Put job in background"},
     {"type", builtin_type, "Display command type"},
+    {"set", builtin_set, "Set shell options: -e/+e, -x/+x"},
     {NULL, NULL, NULL}};
 
 builtin_t *builtin_find(const char *name) {
