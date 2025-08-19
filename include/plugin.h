@@ -13,12 +13,12 @@ typedef struct plugin plugin_t;
 
 /** Plugin metadata and callbacks provided by shared objects. */
 typedef struct {
-    const char *name;        /**< Plugin name. */
-    const char *version;     /**< Semantic version string. */
-    const char *description; /**< Short description. */
-    int (*init)(void);       /**< Optional init callback (0 on success). */
+    const char *name;                      /**< Plugin name. */
+    const char *version;                   /**< Semantic version string. */
+    const char *description;               /**< Short description. */
+    int (*init)(void);                     /**< Optional init callback (0 on success). */
     int (*execute)(int argc, char **argv); /**< Command entry point. */
-    void (*cleanup)(void);   /**< Optional cleanup callback. */
+    void (*cleanup)(void);                 /**< Optional cleanup callback. */
 } plugin_info_t;
 
 /**

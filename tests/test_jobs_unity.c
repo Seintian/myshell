@@ -2,6 +2,7 @@
 #include "unity.h"
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 void test_job_create(void) {
     pid_t test_pgid = 1234;

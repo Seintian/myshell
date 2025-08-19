@@ -2,7 +2,7 @@
  * @file shell.h
  * @brief Public entry points and global state for the interactive shell.
  *
- * @details The shell provides an interactive read–eval–print loop (REPL).
+ * @details The shell provides an interactive read-eval-print loop (REPL).
  * On each iteration it:
  *  1. prints a prompt ("myshell> "),
  *  2. reads a line from stdin (getline),

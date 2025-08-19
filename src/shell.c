@@ -43,7 +43,8 @@ void shell_cleanup(void) {
 
 static int execute_line(const char *line_in) {
     int rc = 0;
-    if (!line_in || *line_in == '\0') return 0;
+    if (!line_in || *line_in == '\0')
+        return 0;
     if (shell_flag_xtrace) {
         fprintf(stderr, "+ %s\n", line_in);
     }
@@ -78,8 +79,10 @@ int shell_run_file(const char *path) {
             // skip shebang
             continue;
         }
-        if (read > 0 && line[read - 1] == '\n') line[read - 1] = '\0';
-        if (line[0] == '\0') continue;
+        if (read > 0 && line[read - 1] == '\n')
+            line[read - 1] = '\0';
+        if (line[0] == '\0')
+            continue;
         last_status = execute_line(line);
         if (shell_flag_errexit && last_status != 0) {
             break;
@@ -90,18 +93,35 @@ int shell_run_file(const char *path) {
     return last_status;
 }
 
-void shell_set_errexit(int on) { shell_flag_errexit = on ? 1 : 0; }
-void shell_set_xtrace(int on) { shell_flag_xtrace = on ? 1 : 0; }
-int shell_get_errexit(void) { return shell_flag_errexit; }
-int shell_get_xtrace(void) { return shell_flag_xtrace; }
+void shell_set_errexit(int on) {
+    shell_flag_errexit = on ? 1 : 0;
+}
+void shell_set_xtrace(int on) {
+    shell_flag_xtrace = on ? 1 : 0;
+}
+int shell_get_errexit(void) {
+    return shell_flag_errexit;
+}
+int shell_get_xtrace(void) {
+    return shell_flag_xtrace;
+}
 
 int shell_main(int argc, char **argv) {
+    // Reset flags per invocation (separate shells shouldn't inherit state)
+    shell_set_errexit(0);
+    shell_set_xtrace(0);
+    shell_interactive = 1;
+    // Ensure stdin stream flags are clear (tests may have hit EOF earlier)
+    clearerr(stdin);
     // Basic CLI: myshell [-e] [-x] [script [args...]]
     int argi = 1;
     while (argi < argc && argv[argi][0] == '-' && argv[argi][1] != '\0') {
-        if (strcmp(argv[argi], "-e") == 0) shell_set_errexit(1);
-        else if (strcmp(argv[argi], "-x") == 0) shell_set_xtrace(1);
-        else break; // unknown, let script handle
+        if (strcmp(argv[argi], "-e") == 0)
+            shell_set_errexit(1);
+        else if (strcmp(argv[argi], "-x") == 0)
+            shell_set_xtrace(1);
+        else
+            break; // unknown, let script handle
         argi++;
     }
     if (argi < argc) {
@@ -114,28 +134,108 @@ int shell_main(int argc, char **argv) {
     ssize_t read;
     int exit_code = 0;
 
+    char *multiline_buffer = NULL;
+    size_t multiline_capacity = 0;
+    size_t multiline_length = 0;
+
     while (shell_running) {
+        // Be defensive each iteration in case callers swap stdin between loops
+        clearerr(stdin);
         if (shell_interactive) {
-            printf("myshell> ");
+            // Show continuation prompt if we're in multiline mode
+            if (multiline_length > 0) {
+                printf("      >> "); // Continuation prompt
+            } else {
+                printf("myshell> "); // Normal prompt
+            }
             fflush(stdout);
         }
 
         if ((read = getline(&line, &len, stdin)) == -1) {
-            break;
+            if (feof(stdin)) {
+                // EOF reached. If we have a pending multiline command, execute it once.
+                if (multiline_length > 0 && multiline_buffer && multiline_buffer[0] != '\0') {
+                    exit_code = execute_line(multiline_buffer);
+                }
+                break; // then exit loop
+            } else {
+                perror("getline");
+                break;
+            }
         }
 
         // Remove newline
-        if (line[read - 1] == '\n') {
+        if (read > 0 && line[read - 1] == '\n') {
             line[read - 1] = '\0';
+            read--;
         }
 
-        if (strlen(line) == 0) {
+        // Skip empty lines when not in multiline mode
+        if (read == 0 && multiline_length == 0) {
             continue;
         }
-        exit_code = execute_line(line);
-        if (shell_flag_errexit && exit_code != 0) {
-            break;
+
+        // Check for line continuation (backslash at end)
+        int has_continuation = 0;
+        if (read > 0 && line[read - 1] == '\\') {
+            has_continuation = 1;
+            line[read - 1] = '\0'; // Remove the backslash
+            read--;
         }
+
+        // If we're in continuation mode, use the multiline buffer; otherwise execute single line directly
+        if (has_continuation || multiline_length > 0) {
+            // Accumulate the line in multiline buffer
+            size_t needed = multiline_length + read + 2; // +1 for space, +1 for null terminator
+            if (needed > multiline_capacity) {
+                multiline_capacity = needed * 2; // Double the capacity
+                multiline_buffer = realloc(multiline_buffer, multiline_capacity);
+                if (!multiline_buffer) {
+                    perror("realloc");
+                    exit_code = 1;
+                    break;
+                }
+                if (multiline_length == 0) {
+                    multiline_buffer[0] = '\0';
+                }
+            }
+
+            // Append current line to multiline buffer
+            if (multiline_length > 0 && read > 0) {
+                strcat(multiline_buffer, " "); // Add space between lines
+                multiline_length++;
+            }
+            if (read > 0) {
+                strcat(multiline_buffer, line);
+                multiline_length += read;
+            }
+
+            // If no continuation now, execute the accumulated buffer
+            if (!has_continuation && multiline_length > 0) {
+                exit_code = execute_line(multiline_buffer);
+
+                // Reset multiline buffer
+                multiline_length = 0;
+                if (multiline_buffer) {
+                    multiline_buffer[0] = '\0';
+                }
+
+                if (shell_flag_errexit && exit_code != 0) {
+                    break;
+                }
+            }
+        } else {
+            // No continuation and nothing buffered: execute this line immediately
+            exit_code = execute_line(line);
+            if (shell_flag_errexit && exit_code != 0) {
+                break;
+            }
+        }
+    }
+
+    // Clean up multiline buffer
+    if (multiline_buffer) {
+        free(multiline_buffer);
     }
 
     if (line) {

@@ -2,7 +2,7 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -g -Iinclude
+CFLAGS = -Wall -Wextra -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -g -Iinclude
 LDFLAGS = -ldl
 
 # Directories

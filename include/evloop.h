@@ -8,7 +8,7 @@
  *  @brief select/epoll event loop abstraction.
  *  @{ */
 
-typedef struct evloop evloop_t; /**< Opaque event loop. */
+typedef struct evloop evloop_t;                        /**< Opaque event loop. */
 typedef void (*evloop_callback_t)(int fd, void *data); /**< FD callback. */
 
 /** Bitmask of interest events. */

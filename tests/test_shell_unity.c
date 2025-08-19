@@ -1,5 +1,8 @@
+#include "env.h"
 #include "shell.h"
 #include "unity.h"
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -43,7 +46,9 @@ static int run_shell_with_input_ex(const char *input, int force_running) {
         shell_running = 1;
     }
 
+    shell_init();
     int rc = shell_main(0, NULL);
+    shell_cleanup();
 
     // Restore global and stdin
     shell_running = saved_running;
@@ -52,7 +57,9 @@ static int run_shell_with_input_ex(const char *input, int force_running) {
     return rc;
 }
 
-static int run_shell_with_input(const char *input) { return run_shell_with_input_ex(input, 1); }
+static int run_shell_with_input(const char *input) {
+    return run_shell_with_input_ex(input, 1);
+}
 
 void test_shell_cleanup(void) {
     // Test shell cleanup
@@ -112,7 +119,7 @@ void test_shell_main_exit_stops_loop(void) {
 void test_shell_main_nonexistent_command_returns_zero(void) {
     // Current implementation returns 0 even for unknown commands
     int rc = run_shell_with_input("__definitely_not_a_command__\n");
-    TEST_ASSERT_EQUAL(0, rc);
+    TEST_ASSERT_NOT_EQUAL(0, rc);
 }
 
 void test_shell_main_multiline_script_last_status(void) {
@@ -171,4 +178,144 @@ void test_shell_cleanup_without_init(void) {
 
     // Should handle cleanup without init gracefully
     TEST_ASSERT_TRUE(1);
+}
+
+// ---- New tests for non-interactive script mode and flags ----
+
+static char *write_temp_script(const char *contents) {
+    char templ[] = "/tmp/myshell_script_XXXXXX";
+    int fd = mkstemp(templ);
+    TEST_ASSERT_NOT_EQUAL(-1, fd);
+    size_t len = strlen(contents);
+    ssize_t w = write(fd, contents, len);
+    (void)w;
+    close(fd);
+    return strdup(templ);
+}
+
+// (helper removed)
+
+void test_shell_run_file_status_propagates(void) {
+    char *path = write_temp_script("exit 42\n");
+    char *argvv[] = {"myshell", path, NULL};
+    int rc = shell_main(2, argvv);
+    TEST_ASSERT_EQUAL(42, rc);
+    unlink(path);
+    free(path);
+}
+
+void test_shell_run_file_shebang_skipped(void) {
+    char *path = write_temp_script("#!/usr/bin/env myshell\nexit 7\n");
+    char *argvv[] = {"myshell", path, NULL};
+    int rc = shell_main(2, argvv);
+    TEST_ASSERT_EQUAL(7, rc);
+    unlink(path);
+    free(path);
+}
+
+void test_shell_run_file_errexit_stops_on_error(void) {
+    // cd to nonexistent path should fail; with -e script stops and returns non-zero
+    char *path = write_temp_script("cd /definitely/not/exists\necho after\nexit 0\n");
+    char *argvv[] = {"myshell", "-e", path, NULL};
+    int rc = shell_main(3, argvv);
+    TEST_ASSERT_NOT_EQUAL(0, rc);
+    unlink(path);
+    free(path);
+}
+
+void test_shell_run_file_errexit_off_allows_continue(void) {
+    // Without -e, last status should be from final exit 0
+    char *path = write_temp_script("cd /definitely/not/exists\nexit 0\n");
+    char *argvv[] = {"myshell", path, NULL};
+    int rc = shell_main(2, argvv);
+    TEST_ASSERT_EQUAL(0, rc);
+    unlink(path);
+    free(path);
+}
+
+void test_shell_run_file_xtrace_does_not_change_status(void) {
+    char *path = write_temp_script("exit 3\n");
+    char *argvv[] = {"myshell", "-x", path, NULL};
+    int rc = shell_main(3, argvv);
+    TEST_ASSERT_EQUAL(3, rc);
+    unlink(path);
+    free(path);
+}
+
+void test_shell_source_semantics_env_persists(void) {
+    // Script exports a variable; it should persist in the current process
+    char *path = write_temp_script("export FOO=bar\n");
+    char *argvv[] = {"myshell", path, NULL};
+    int rc = shell_main(2, argvv);
+    TEST_ASSERT_EQUAL(0, rc);
+    const char *val = env_get("FOO");
+    TEST_ASSERT_NOT_NULL(val);
+    TEST_ASSERT_TRUE(strcmp(val, "bar") == 0);
+    unlink(path);
+    free(path);
+}
+
+void test_shell_set_builtin_toggles_flags(void) {
+    // Ensure clean env for side-effect checks
+    (void)env_unset("T1");
+    (void)env_unset("T2");
+
+    // 1) errexit on: failure should stop before later commands (export T1)
+    char *path1 = write_temp_script(
+        "set -e\n"
+        "cd /definitely/not/exists\n"
+        "export T1=ok\n"
+        "exit 0\n");
+    char *argvv1[] = {"myshell", path1, NULL};
+    int rc = shell_main(2, argvv1);
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(0, rc, "invalid cd > rc == 0");
+    const char *t1 = env_get("T1");
+    TEST_ASSERT_TRUE(t1 == NULL || t1[0] == '\0');
+    unlink(path1);
+    free(path1);
+
+    // 2) toggle -e off before a failure: subsequent commands continue and set T2
+    char *path2 = write_temp_script(
+        "set -e\n"
+        "set +e\n"
+        "set\n"
+        "cd /definitely/not/exists\n"
+        "export T2=ok\n"
+        "echo $T2\n"
+        "exit 0\n");
+    char *argvv2[] = {"myshell", path2, NULL};
+    rc = shell_main(2, argvv2);
+    TEST_ASSERT_EQUAL(0, rc);
+    const char *t2 = env_get("T2");
+    TEST_ASSERT_NOT_NULL(t2);
+    TEST_ASSERT_TRUE(strcmp(t2, "ok") == 0);
+    unlink(path2);
+    free(path2);
+
+    // 3) xtrace on/off should not affect status
+    char *path3 = write_temp_script("set -x\nexit 0\n");
+    char *argvv3[] = {"myshell", path3, NULL};
+    rc = shell_main(2, argvv3);
+    TEST_ASSERT_EQUAL(0, rc);
+    unlink(path3);
+    free(path3);
+    
+    char *path4 = write_temp_script("set -x\nset +x\nexit 0\n");
+    char *argvv4[] = {"myshell", path4, NULL};
+    rc = shell_main(2, argvv4);
+    TEST_ASSERT_EQUAL(0, rc);
+    unlink(path4);
+    free(path4);
+
+    // 4) invalid option yields non-zero (builtin returns error)
+    char *path5 = write_temp_script("set -q\n");
+    char *argvv5[] = {"myshell", path5, NULL};
+    rc = shell_main(2, argvv5);
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(0, rc, "set -q > rc == 0");
+    unlink(path5);
+    free(path5);
+
+    // Cleanup env side effects
+    (void)env_unset("T1");
+    (void)env_unset("T2");
 }

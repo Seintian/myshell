@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#define DEBUG 0
+
 // Include all test modules (declare their test functions)
 // Lexer tests
 void test_lexer_create_and_free(void);
@@ -136,6 +138,14 @@ void test_shell_state_consistency(void);
 void test_shell_double_init(void);
 void test_shell_double_cleanup(void);
 void test_shell_cleanup_without_init(void);
+// New non-interactive/script and flags tests
+void test_shell_run_file_status_propagates(void);
+void test_shell_run_file_shebang_skipped(void);
+void test_shell_run_file_errexit_stops_on_error(void);
+void test_shell_run_file_errexit_off_allows_continue(void);
+void test_shell_run_file_xtrace_does_not_change_status(void);
+void test_shell_source_semantics_env_persists(void);
+void test_shell_set_builtin_toggles_flags(void);
 
 // Pipeline tests
 void test_pipeline_execute_null_commands(void);
@@ -155,6 +165,7 @@ static int original_stderr = -1;
 static int devnull_fd = -1;
 
 void setUp(void) {
+#if DEBUG != 1
     // Redirect both stdout and stderr before each test to suppress API output
     original_stdout = dup(STDOUT_FILENO);
     original_stderr = dup(STDERR_FILENO);
@@ -162,6 +173,7 @@ void setUp(void) {
 
     dup2(devnull_fd, STDOUT_FILENO);
     dup2(devnull_fd, STDERR_FILENO);
+#endif // DEBUG
 }
 
 void tearDown(void) {
@@ -328,6 +340,13 @@ int main(void) {
     RUN_TEST(test_shell_double_init);
     RUN_TEST(test_shell_double_cleanup);
     RUN_TEST(test_shell_cleanup_without_init);
+    RUN_TEST(test_shell_run_file_status_propagates);
+    RUN_TEST(test_shell_run_file_shebang_skipped);
+    RUN_TEST(test_shell_run_file_errexit_stops_on_error);
+    RUN_TEST(test_shell_run_file_errexit_off_allows_continue);
+    RUN_TEST(test_shell_run_file_xtrace_does_not_change_status);
+    RUN_TEST(test_shell_source_semantics_env_persists);
+    RUN_TEST(test_shell_set_builtin_toggles_flags);
 
     // Pipeline tests
     printf("=== Running Pipeline Tests ===\n");

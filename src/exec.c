@@ -11,6 +11,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// Forward declaration from expand.c
+char *expand_variables(const char *str);
+
 /** Simple AST node structures (normally defined in ast.c). */
 struct ast_node {
     ast_node_type_t type;
@@ -86,30 +89,45 @@ int exec_command(ast_command_t *cmd) {
         return -1;
     }
 
+    // Expand variables in all arguments
+    int argc = string_array_length(argv);
+    char **expanded_argv = malloc_safe((argc + 1) * sizeof(char *));
+    for (int i = 0; i < argc; i++) {
+        expanded_argv[i] = expand_variables(argv[i]);
+        if (!expanded_argv[i]) {
+            expanded_argv[i] = strdup_safe(argv[i]); // fallback to original
+        }
+    }
+    expanded_argv[argc] = NULL;
+
     // Check for builtin commands
     int builtin_result =
-        builtin_execute(argv[0], string_array_length(argv), argv);
+        builtin_execute(expanded_argv[0], argc, expanded_argv);
     if (builtin_result != -1) {
+        free_string_array(expanded_argv);
         return builtin_result;
     }
 
     // Check for plugin commands
-    if (plugin_execute(argv[0], string_array_length(argv), argv) == 0) {
+    if (plugin_execute(expanded_argv[0], argc, expanded_argv) == 0) {
+        free_string_array(expanded_argv);
         return 0;
     }
 
     // Execute external command
     pid_t pid = fork();
     if (pid == 0) {
-        execvp(argv[0], argv);
+        execvp(expanded_argv[0], expanded_argv);
         perror("execvp");
         exit(1);
     } else if (pid > 0) {
         int status;
         waitpid(pid, &status, 0);
+        free_string_array(expanded_argv);
         return WEXITSTATUS(status);
     } else {
         perror("fork");
+        free_string_array(expanded_argv);
         return -1;
     }
 }

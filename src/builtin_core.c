@@ -178,10 +178,14 @@ static int builtin_set(int argc, char **argv) {
         return 0;
     }
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-e") == 0) shell_set_errexit(1);
-        else if (strcmp(argv[i], "+e") == 0) shell_set_errexit(0);
-        else if (strcmp(argv[i], "-x") == 0) shell_set_xtrace(1);
-        else if (strcmp(argv[i], "+x") == 0) shell_set_xtrace(0);
+        if (strcmp(argv[i], "-e") == 0)
+            shell_set_errexit(1);
+        else if (strcmp(argv[i], "+e") == 0)
+            shell_set_errexit(0);
+        else if (strcmp(argv[i], "-x") == 0)
+            shell_set_xtrace(1);
+        else if (strcmp(argv[i], "+x") == 0)
+            shell_set_xtrace(0);
         else {
             fprintf(stderr, "set: unsupported option '%s'\n", argv[i]);
             return 2;
