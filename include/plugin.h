@@ -4,7 +4,7 @@
  */
 #ifndef PLUGIN_H
 #define PLUGIN_H
-/** \defgroup group_plugin Plugins
+/** \defgroup group_plugin plugins
  *  @brief Dynamically loaded commands.
  *  @{ */
 

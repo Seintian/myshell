@@ -4,7 +4,7 @@
  */
 #ifndef EVLOOP_H
 #define EVLOOP_H
-/** \defgroup group_evloop EventLoop
+/** \defgroup group_evloop event_loop
  *  @brief select/epoll event loop abstraction.
  *  @{ */
 

@@ -4,7 +4,7 @@
  */
 #ifndef ENV_H
 #define ENV_H
-/** \defgroup group_env Environment
+/** \defgroup group_env environment
  *  @brief Environment variables and expansion.
  *  @{ */
 

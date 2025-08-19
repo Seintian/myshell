@@ -4,7 +4,7 @@
  */
 #ifndef UTIL_H
 #define UTIL_H
-/** \defgroup group_util Utilities
+/** \defgroup group_util utilities
  *  @brief String, memory, path, and debug helpers.
  *  @{ */
 

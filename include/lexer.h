@@ -4,7 +4,7 @@
  */
 #ifndef LEXER_H
 #define LEXER_H
-/** \defgroup group_lexer Lexer
+/** \defgroup group_lexer lexer
  *  @brief Tokenization of input strings.
  *  @{ */
 

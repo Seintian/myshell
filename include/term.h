@@ -4,7 +4,7 @@
  */
 #ifndef TERM_H
 #define TERM_H
-/** \defgroup group_term Terminal
+/** \defgroup group_term terminal
  *  @brief Terminal control and signal handling.
  *  @{ */
 

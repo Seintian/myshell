@@ -2,7 +2,6 @@
  * @file shell.c
  * @brief Interactive shell main loop and lifecycle management.
  */
-#define _GNU_SOURCE
 #include "shell.h"
 #include "builtin.h"
 #include "env.h"
@@ -41,13 +40,72 @@ void shell_cleanup(void) {
     term_restore_signals();
 }
 
+// --- internal helpers -------------------------------------------------------
+
+// Print prompt if interactive; continuation prompt when multiline is active.
+static inline void shell_print_prompt(size_t multiline_length) {
+    if (!shell_interactive)
+        return;
+
+    if (multiline_length > 0)
+        printf("      >> ");
+    else
+        printf("myshell> ");
+
+    fflush(stdout);
+}
+
+// Ensure the multiline buffer has capacity for at least needed bytes
+// (including the trailing NUL once appended). Returns 0 on success, non-zero on OOM.
+static int ensure_capacity(char **buffer, size_t *capacity, size_t needed) {
+    if (needed <= *capacity)
+        return 0;
+    size_t new_cap = (*capacity == 0) ? (needed * 2) : *capacity;
+    while (new_cap < needed) {
+        new_cap *= 2;
+    }
+    char *new_buf = realloc(*buffer, new_cap);
+    if (!new_buf)
+        return -1;
+    *buffer = new_buf;
+    *capacity = new_cap;
+    return 0;
+}
+
+// Append a line into the multiline buffer, inserting a separating space when
+// there is already content and the new line is non-empty.
+static int append_line(char **buffer, size_t *capacity, size_t *length,
+                       const char *line, size_t line_len) {
+    size_t extra = line_len;
+    int add_space = (*length > 0 && line_len > 0) ? 1 : 0;
+    size_t needed = *length + (size_t)add_space + extra + 1; // +1 for NUL
+    if (ensure_capacity(buffer, capacity, needed) != 0) {
+        return -1;
+    }
+    if (*length == 0) {
+        (*buffer)[0] = '\0';
+    }
+    if (add_space) {
+        (*buffer)[*length] = ' ';
+        *length += 1;
+        (*buffer)[*length] = '\0';
+    }
+    if (line_len > 0) {
+        memcpy((*buffer) + *length, line, line_len);
+        *length += line_len;
+        (*buffer)[*length] = '\0';
+    }
+    return 0;
+}
+
 static int execute_line(const char *line_in) {
     int rc = 0;
     if (!line_in || *line_in == '\0')
         return 0;
-    if (shell_flag_xtrace) {
+
+    if (shell_flag_xtrace)
         fprintf(stderr, "+ %s\n", line_in);
-    }
+
     lexer_t *lexer = lexer_create(line_in);
     parser_t *parser = parser_create(lexer);
     ast_node_t *ast = parser_parse(parser);
@@ -111,6 +169,7 @@ int shell_main(int argc, char **argv) {
     shell_set_errexit(0);
     shell_set_xtrace(0);
     shell_interactive = 1;
+    shell_running = 1; // ensure a fresh loop for each invocation
     // Ensure stdin stream flags are clear (tests may have hit EOF earlier)
     clearerr(stdin);
     // Basic CLI: myshell [-e] [-x] [script [args...]]
@@ -141,15 +200,7 @@ int shell_main(int argc, char **argv) {
     while (shell_running) {
         // Be defensive each iteration in case callers swap stdin between loops
         clearerr(stdin);
-        if (shell_interactive) {
-            // Show continuation prompt if we're in multiline mode
-            if (multiline_length > 0) {
-                printf("      >> "); // Continuation prompt
-            } else {
-                printf("myshell> "); // Normal prompt
-            }
-            fflush(stdout);
-        }
+        shell_print_prompt(multiline_length);
 
         if ((read = getline(&line, &len, stdin)) == -1) {
             if (feof(stdin)) {
@@ -171,9 +222,8 @@ int shell_main(int argc, char **argv) {
         }
 
         // Skip empty lines when not in multiline mode
-        if (read == 0 && multiline_length == 0) {
+        if (read == 0 && multiline_length == 0)
             continue;
-        }
 
         // Check for line continuation (backslash at end)
         int has_continuation = 0;
@@ -186,28 +236,11 @@ int shell_main(int argc, char **argv) {
         // If we're in continuation mode, use the multiline buffer; otherwise execute single line directly
         if (has_continuation || multiline_length > 0) {
             // Accumulate the line in multiline buffer
-            size_t needed = multiline_length + read + 2; // +1 for space, +1 for null terminator
-            if (needed > multiline_capacity) {
-                multiline_capacity = needed * 2; // Double the capacity
-                multiline_buffer = realloc(multiline_buffer, multiline_capacity);
-                if (!multiline_buffer) {
-                    perror("realloc");
-                    exit_code = 1;
-                    break;
-                }
-                if (multiline_length == 0) {
-                    multiline_buffer[0] = '\0';
-                }
-            }
-
-            // Append current line to multiline buffer
-            if (multiline_length > 0 && read > 0) {
-                strcat(multiline_buffer, " "); // Add space between lines
-                multiline_length++;
-            }
-            if (read > 0) {
-                strcat(multiline_buffer, line);
-                multiline_length += read;
+            if (append_line(&multiline_buffer, &multiline_capacity, &multiline_length,
+                            line, (size_t)read) != 0) {
+                perror("realloc");
+                exit_code = 1;
+                break;
             }
 
             // If no continuation now, execute the accumulated buffer
@@ -220,16 +253,14 @@ int shell_main(int argc, char **argv) {
                     multiline_buffer[0] = '\0';
                 }
 
-                if (shell_flag_errexit && exit_code != 0) {
+                if (shell_flag_errexit && exit_code != 0)
                     break;
-                }
             }
         } else {
             // No continuation and nothing buffered: execute this line immediately
             exit_code = execute_line(line);
-            if (shell_flag_errexit && exit_code != 0) {
+            if (shell_flag_errexit && exit_code != 0)
                 break;
-            }
         }
     }
 

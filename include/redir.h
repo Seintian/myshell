@@ -4,7 +4,7 @@
  */
 #ifndef REDIR_H
 #define REDIR_H
-/** \defgroup group_redir Redirection
+/** \defgroup group_redir redirection
  *  @brief File descriptor redirection helpers.
  *  @{ */
 

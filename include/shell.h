@@ -24,7 +24,7 @@
 #ifndef SHELL_H
 #define SHELL_H
 
-/** \defgroup group_shell Shell
+/** \defgroup group_shell shell
  *  @brief Interactive shell API and lifecycle.
  *  @{ */
 
@@ -47,25 +47,9 @@ extern int shell_flag_xtrace;
 
 /**
  * @brief Shell entry point invoked by main(). Starts the REPL.
- *
- * @param argc Argument count (currently unused).
- * @param argv Argument vector (currently unused).
- * @retval 0 if no command was executed or last command succeeded.
- * @retval non-zero if the last command failed (its exit status), or if
- *         an internal error occurred while spawning an external command.
- *
- * Ownership: Does not take ownership of argv.
- * I/O: Reads from stdin, writes prompt and command outputs to stdout/stderr.
- * Signals: Installs simple handlers via term_setup_signals().
- *
- * @code{.c}
- * int main(int argc, char **argv) {
- *     shell_init();
- *     int rc = shell_main(argc, argv);
- *     shell_cleanup();
- *     return rc;
- * }
- * @endcode
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return Status of the last executed command, or 0 when nothing ran.
  */
 int shell_main(int argc, char **argv);
 

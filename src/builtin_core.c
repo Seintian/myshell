@@ -36,11 +36,20 @@ int builtin_cd(int argc, char **argv) {
 }
 
 int builtin_exit(int argc, char **argv) {
-    // Store exit code for later use if needed
+    // Default exit code
     int exit_code = 0;
 
     if (argc > 1) {
-        exit_code = atoi(argv[1]);
+        const char *s = argv[1];
+        // Accept optional sign and digits only
+        char *end = NULL;
+        long val = strtol(s, &end, 10);
+        if (end && *end == '\0') {
+            exit_code = (int)val;
+        } else {
+            fprintf(stderr, "exit: numeric argument required\n");
+            exit_code = 2; // conventional error for invalid usage
+        }
     }
 
     // Set shell_running to 0 to trigger graceful exit

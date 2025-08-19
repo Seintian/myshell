@@ -4,7 +4,7 @@
  */
 #ifndef AST_H
 #define AST_H
-/** \defgroup group_ast AST
+/** \defgroup group_ast ast
  *  @brief Abstract Syntax Tree nodes and constructors.
  *  @{ */
 

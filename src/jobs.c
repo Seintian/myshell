@@ -2,9 +2,9 @@
  * @file jobs.c
  * @brief Minimal job control: list, fg/bg, and cleanup.
  */
-#define _GNU_SOURCE
 #include "jobs.h"
 #include "util.h"
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +26,8 @@ static job_t *job_list_head = NULL;
 static int next_job_id = 1;
 
 job_t *job_create(pid_t pgid, const char *command) {
+    if (!command)
+        return NULL;
     job_t *job = malloc_safe(sizeof(job_t));
     job->id = next_job_id++;
     job->pgid = pgid;
@@ -37,9 +39,7 @@ job_t *job_create(pid_t pgid, const char *command) {
 }
 
 void job_set_status(job_t *job, job_status_t status) {
-    if (job) {
-        job->status = status;
-    }
+    if (job) job->status = status;
 }
 
 void job_list(void) {
@@ -68,36 +68,37 @@ void job_list(void) {
 job_t *job_find(int job_id) {
     job_t *current = job_list_head;
     while (current) {
-        if (current->id == job_id) {
-            return current;
-        }
+    if (current->id == job_id) return current;
         current = current->next;
     }
     return NULL;
 }
 
 void job_fg(job_t *job) {
-    if (job && job->status == JOB_STOPPED) {
+    if (!job) return;
+    if (job->status == JOB_STOPPED) {
         // Send SIGCONT to the process group
-        kill(-job->pgid, SIGCONT);
+    if (kill(-job->pgid, SIGCONT) == -1) { perror("kill(SIGCONT)"); return; }
         job->status = JOB_RUNNING;
+    }
 
-        // Wait for the job to finish or stop
-        int status;
-        waitpid(job->pgid, &status, WUNTRACED);
+    // Wait for the job to finish or stop (any child in group)
+    int status = 0;
+    pid_t w = waitpid(-job->pgid, &status, WUNTRACED);
+    if (w == -1) { if (errno != ECHILD) perror("waitpid"); return; }
 
-        if (WIFSTOPPED(status)) {
-            job->status = JOB_STOPPED;
-        } else {
-            job->status = JOB_DONE;
-        }
+    if (WIFSTOPPED(status)) {
+        job->status = JOB_STOPPED;
+    } else {
+        job->status = JOB_DONE;
     }
 }
 
 void job_bg(job_t *job) {
-    if (job && job->status == JOB_STOPPED) {
+    if (!job) return;
+    if (job->status == JOB_STOPPED) {
         // Send SIGCONT to the process group
-        kill(-job->pgid, SIGCONT);
+    if (kill(-job->pgid, SIGCONT) == -1) { perror("kill(SIGCONT)"); return; }
         job->status = JOB_RUNNING;
         printf("[%d] %s &\n", job->id, job->command);
     }

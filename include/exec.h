@@ -12,7 +12,7 @@
  */
 #ifndef EXEC_H
 #define EXEC_H
-/** \defgroup group_exec Execution
+/** \defgroup group_exec execution
  *  @brief Execution of ASTs, commands, and pipelines.
  *  @{ */
 

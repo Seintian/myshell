@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include "env.h"
 #include "util.h"
 #include <ctype.h>
@@ -9,8 +8,7 @@
 char *expand_variables(const char *str) {
     // Simple variable expansion implementation
     // This would need to be expanded for full shell variable expansion
-    if (!str)
-        return NULL;
+    if (!str) return NULL;
 
     size_t len = strlen(str);
     size_t cap = len + 1;           // initial capacity
@@ -35,9 +33,8 @@ char *expand_variables(const char *str) {
             size_t var_start = i + 1;
             size_t var_end = var_start;
 
-            while (var_end < len && (isalnum((unsigned char)str[var_end]) || str[var_end] == '_')) {
+            while (var_end < len && (isalnum((unsigned char)str[var_end]) || str[var_end] == '_'))
                 var_end++;
-            }
 
             if (var_end > var_start) {
                 size_t name_len = var_end - var_start;
@@ -59,7 +56,7 @@ char *expand_variables(const char *str) {
             }
         }
 
-        // Default: copy the character as-is
+    // Default: copy the character as-is
     ENSURE_CAP(1);
         result[result_pos++] = str[i];
     }

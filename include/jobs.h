@@ -4,7 +4,7 @@
  */
 #ifndef JOBS_H
 #define JOBS_H
-/** \defgroup group_jobs Jobs
+/** \defgroup group_jobs jobs
  *  @brief Foreground/background job control.
  *  @{ */
 

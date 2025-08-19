@@ -4,7 +4,7 @@
  */
 #ifndef PIPELINE_H
 #define PIPELINE_H
-/** \defgroup group_pipeline Pipeline
+/** \defgroup group_pipeline pipeline
  *  @brief Multi-stage pipeline execution helpers.
  *  @{ */
 

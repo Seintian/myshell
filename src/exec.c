@@ -6,13 +6,12 @@
 #include "builtin.h"
 #include "plugin.h"
 #include "util.h"
+#include "env.h" // for expand_variables
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-// Forward declaration from expand.c
-char *expand_variables(const char *str);
 
 /** Simple AST node structures (normally defined in ast.c). */
 struct ast_node {
@@ -27,6 +26,35 @@ struct ast_node {
         } pipeline;
     } data;
 };
+
+static char **expand_argv(char **argv) {
+    int argc = string_array_length(argv);
+    char **expanded = malloc_safe((argc + 1) * sizeof(char *));
+    for (int i = 0; i < argc; i++) {
+        expanded[i] = expand_variables(argv[i]);
+        if (!expanded[i]) {
+            expanded[i] = strdup_safe(argv[i]);
+        }
+    }
+    expanded[argc] = NULL;
+    return expanded;
+}
+
+static int exec_external(char **argv) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        perror("execvp");
+        exit(1);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WEXITSTATUS(status);
+    } else {
+        perror("fork");
+        return -1;
+    }
+}
 
 ast_node_t *ast_create_command(char **argv) {
     ast_node_t *node = malloc_safe(sizeof(ast_node_t));
@@ -90,19 +118,11 @@ int exec_command(ast_command_t *cmd) {
     }
 
     // Expand variables in all arguments
-    int argc = string_array_length(argv);
-    char **expanded_argv = malloc_safe((argc + 1) * sizeof(char *));
-    for (int i = 0; i < argc; i++) {
-        expanded_argv[i] = expand_variables(argv[i]);
-        if (!expanded_argv[i]) {
-            expanded_argv[i] = strdup_safe(argv[i]); // fallback to original
-        }
-    }
-    expanded_argv[argc] = NULL;
+    char **expanded_argv = expand_argv(argv);
+    int argc = string_array_length(expanded_argv);
 
     // Check for builtin commands
-    int builtin_result =
-        builtin_execute(expanded_argv[0], argc, expanded_argv);
+    int builtin_result = builtin_execute(expanded_argv[0], argc, expanded_argv);
     if (builtin_result != -1) {
         free_string_array(expanded_argv);
         return builtin_result;
@@ -115,21 +135,9 @@ int exec_command(ast_command_t *cmd) {
     }
 
     // Execute external command
-    pid_t pid = fork();
-    if (pid == 0) {
-        execvp(expanded_argv[0], expanded_argv);
-        perror("execvp");
-        exit(1);
-    } else if (pid > 0) {
-        int status;
-        waitpid(pid, &status, 0);
-        free_string_array(expanded_argv);
-        return WEXITSTATUS(status);
-    } else {
-        perror("fork");
-        free_string_array(expanded_argv);
-        return -1;
-    }
+    int rc = exec_external(expanded_argv);
+    free_string_array(expanded_argv);
+    return rc;
 }
 
 int exec_pipeline(ast_pipeline_t *pipeline) {

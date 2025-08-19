@@ -4,7 +4,7 @@
  */
 #ifndef PARSER_H
 #define PARSER_H
-/** \defgroup group_parser Parser
+/** \defgroup group_parser parser
  *  @brief Parsing tokens into ASTs.
  *  @{ */
 

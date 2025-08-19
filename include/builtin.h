@@ -4,7 +4,7 @@
  */
 #ifndef BUILTIN_H
 #define BUILTIN_H
-/** \defgroup group_builtin Builtins
+/** \defgroup group_builtin builtins
  *  @brief Built-in command registry and implementations.
  *  @{ */
 
