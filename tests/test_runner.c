@@ -21,6 +21,15 @@ void test_parser_simple_command(void);
 void test_parser_empty_input(void);
 void test_parser_pipeline(void);
 
+// AST tests
+void test_ast_free_null(void);
+void test_ast_create_command_basic(void);
+void test_ast_create_pipeline_basic(void);
+void test_ast_create_command_null_argv(void);
+void test_ast_create_command_deep_copy_safe(void);
+void test_ast_free_nested_pipeline(void);
+void test_ast_create_command_empty_argv_array(void);
+
 // Environment tests
 void test_env_get_existing(void);
 void test_env_get_nonexistent(void);
@@ -122,6 +131,25 @@ void test_term_restore_signals(void);
 void test_term_signal_transitions(void);
 void test_term_combined_operations(void);
 
+// Event loop tests
+void test_evloop_create_and_free(void);
+void test_evloop_add_invalid_params(void);
+void test_evloop_run_timeout_no_events(void);
+void test_evloop_callback_trigger_and_stop(void);
+void test_evloop_remove_fd_and_rerun(void);
+void test_evloop_add_write_event_and_trigger(void);
+void test_evloop_remove_fd_not_found(void);
+void test_evloop_run_null_loop_returns_error(void);
+void test_evloop_two_fds_callbacks_and_stop(void);
+
+// Logger tests
+void test_logger_init_shutdown_idempotent(void);
+void test_logger_set_get_level(void);
+void test_logger_log_calls_do_not_crash(void);
+void test_logger_disabled_env(void);
+void test_logger_vlog_variadic_path(void);
+void test_logger_level_gating(void);
+
 // Shell tests
 void test_shell_init(void);
 void test_shell_cleanup(void);
@@ -167,17 +195,24 @@ static int devnull_fd = -1;
 void setUp(void) {
 #if DEBUG != 1
     // Redirect both stdout and stderr before each test to suppress API output
+    fflush(stdout);
+    fflush(stderr);
     original_stdout = dup(STDOUT_FILENO);
     original_stderr = dup(STDERR_FILENO);
-    devnull_fd = open("/dev/null", O_WRONLY);
+    devnull_fd = open("/dev/null", O_RDWR);
 
     dup2(devnull_fd, STDOUT_FILENO);
     dup2(devnull_fd, STDERR_FILENO);
+    // Disable buffering to avoid delayed writes leaking after tearDown
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
 #endif // DEBUG
 }
 
 void tearDown(void) {
     // Restore stdout and stderr after each test
+    fflush(stdout);
+    fflush(stderr);
     if (original_stdout != -1) {
         dup2(original_stdout, STDOUT_FILENO);
         close(original_stdout);
@@ -192,6 +227,9 @@ void tearDown(void) {
         close(devnull_fd);
         devnull_fd = -1;
     }
+    // Restore default buffering (line-buffered for stdout if tty, full for stderr)
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
 }
 
 int main(void) {
@@ -213,6 +251,16 @@ int main(void) {
     RUN_TEST(test_parser_simple_command);
     RUN_TEST(test_parser_empty_input);
     RUN_TEST(test_parser_pipeline);
+
+    // AST tests
+    printf("=== Running AST Tests ===\n");
+    RUN_TEST(test_ast_free_null);
+    RUN_TEST(test_ast_create_command_basic);
+    RUN_TEST(test_ast_create_pipeline_basic);
+    RUN_TEST(test_ast_create_command_null_argv);
+    RUN_TEST(test_ast_create_command_deep_copy_safe);
+    RUN_TEST(test_ast_free_nested_pipeline);
+    RUN_TEST(test_ast_create_command_empty_argv_array);
 
     // Environment tests
     printf("=== Running Environment Tests ===\n");
@@ -322,6 +370,27 @@ int main(void) {
     RUN_TEST(test_term_restore_signals);
     RUN_TEST(test_term_signal_transitions);
     RUN_TEST(test_term_combined_operations);
+
+    // Event loop tests
+    printf("=== Running Event Loop Tests ===\n");
+    RUN_TEST(test_evloop_create_and_free);
+    RUN_TEST(test_evloop_add_invalid_params);
+    RUN_TEST(test_evloop_run_timeout_no_events);
+    RUN_TEST(test_evloop_callback_trigger_and_stop);
+    RUN_TEST(test_evloop_remove_fd_and_rerun);
+    RUN_TEST(test_evloop_add_write_event_and_trigger);
+    RUN_TEST(test_evloop_remove_fd_not_found);
+    RUN_TEST(test_evloop_run_null_loop_returns_error);
+    RUN_TEST(test_evloop_two_fds_callbacks_and_stop);
+
+    // Logger tests
+    printf("=== Running Logger Tests ===\n");
+    RUN_TEST(test_logger_init_shutdown_idempotent);
+    RUN_TEST(test_logger_set_get_level);
+    RUN_TEST(test_logger_log_calls_do_not_crash);
+    RUN_TEST(test_logger_disabled_env);
+    RUN_TEST(test_logger_vlog_variadic_path);
+    RUN_TEST(test_logger_level_gating);
 
     // Shell tests
     printf("=== Running Shell Tests ===\n");

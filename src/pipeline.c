@@ -5,10 +5,24 @@
 #include "pipeline.h"
 #include "exec.h"
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+static int make_pipe_cloexec(int fds[2]) {
+#ifdef O_CLOEXEC
+    if (pipe2(fds, O_CLOEXEC) == 0)
+        return 0;
+#endif
+    if (pipe(fds) == -1)
+        return -1;
+    // Fallback: set CLOEXEC manually
+    (void)fcntl(fds[0], F_SETFD, fcntl(fds[0], F_GETFD) | FD_CLOEXEC);
+    (void)fcntl(fds[1], F_SETFD, fcntl(fds[1], F_GETFD) | FD_CLOEXEC);
+    return 0;
+}
 
 int pipeline_execute(ast_node_t **commands, int count) {
     if (count <= 0 || !commands)
@@ -31,9 +45,11 @@ int pipeline_execute(ast_node_t **commands, int count) {
         return -1;
     }
 
+    // Create pipes with CLOEXEC using helper
+
     // Create all pipes
     for (int i = 0; i < n_pipes; i++) {
-        if (pipe(pipes[i]) == -1) {
+        if (make_pipe_cloexec(pipes[i]) == -1) {
             perror("pipe");
             // Close any previously created pipes
             for (int j = 0; j < i; j++) {
@@ -52,12 +68,21 @@ int pipeline_execute(ast_node_t **commands, int count) {
         pid_t pid = fork();
         if (pid == 0) {
             // Child process
+            // Put each child in the same process group as the first child
+            // First child becomes group leader (pgid = its pid)
+            if (i == 0) {
+                (void)setpgid(0, 0);
+            } else {
+                (void)setpgid(0, pids[0]);
+            }
             // Set up input
             if (i > 0) {
                 if (dup2(pipes[i - 1][0], STDIN_FILENO) == -1) {
                     perror("dup2");
                     _exit(127);
                 }
+                // Close after dup2
+                close(pipes[i - 1][0]);
             }
 
             // Set up output
@@ -66,6 +91,8 @@ int pipeline_execute(ast_node_t **commands, int count) {
                     perror("dup2");
                     _exit(127);
                 }
+                // Close after dup2
+                close(pipes[i][1]);
             }
 
             // Close all pipe file descriptors
@@ -83,6 +110,11 @@ int pipeline_execute(ast_node_t **commands, int count) {
             break;
         } else {
             pids[i] = pid;
+            // Parent: ensure process group assignment (race-safe)
+            if (i == 0)
+                (void)setpgid(pid, pid);
+            else
+                (void)setpgid(pid, pids[0]);
             spawned++;
         }
     }

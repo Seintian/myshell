@@ -34,6 +34,12 @@ void job_bg(job_t *job);
 /** Remove completed jobs and free their memory. */
 void job_cleanup(void);
 
+// Signal and background reaping support
+/** Notify jobs module that SIGCHLD occurred (from signal handler). */
+void jobs_notify_sigchld(void);
+/** Reap finished/stopped children that belong to background jobs. */
+void jobs_reap_background(void);
+
 /** @} */
 
 #endif // JOBS_H

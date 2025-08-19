@@ -4,14 +4,14 @@
  */
 #include "exec.h"
 #include "builtin.h"
+#include "env.h" // for expand_variables
 #include "plugin.h"
 #include "util.h"
-#include "env.h" // for expand_variables
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
 
 /** Simple AST node structures (normally defined in ast.c). */
 struct ast_node {
@@ -43,13 +43,22 @@ static char **expand_argv(char **argv) {
 static int exec_external(char **argv) {
     pid_t pid = fork();
     if (pid == 0) {
+        // Child: become a process group leader for job control consistency
+        // Ignore errors if already in a group or permissions block
+        (void)setpgid(0, 0);
         execvp(argv[0], argv);
         perror("execvp");
-        exit(1);
+        _exit(127);
     } else if (pid > 0) {
+        // Parent: ensure child is in its own process group (race-safe double call)
+        (void)setpgid(pid, pid);
         int status;
         waitpid(pid, &status, 0);
-        return WEXITSTATUS(status);
+        if (WIFEXITED(status))
+            return WEXITSTATUS(status);
+        if (WIFSIGNALED(status))
+            return 128 + WTERMSIG(status);
+        return 1;
     } else {
         perror("fork");
         return -1;

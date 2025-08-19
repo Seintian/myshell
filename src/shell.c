@@ -6,7 +6,9 @@
 #include "builtin.h"
 #include "env.h"
 #include "exec.h"
+#include "jobs.h"
 #include "lexer.h"
+#include "logger.h"
 #include "parser.h"
 #include "plugin.h"
 #include "term.h"
@@ -28,6 +30,10 @@ void shell_init(void) {
     // Initialize terminal
     term_setup_signals();
 
+    // Initialize logger (optional, default off)
+    logger_init();
+    logger_set_level(LOG_LEVEL_OFF);
+
     // Initialize builtins
     // Register core builtins here
 
@@ -38,6 +44,7 @@ void shell_init(void) {
 void shell_cleanup(void) {
     plugin_cleanup_all();
     term_restore_signals();
+    logger_shutdown();
 }
 
 // --- internal helpers -------------------------------------------------------
@@ -168,7 +175,7 @@ int shell_main(int argc, char **argv) {
     // Reset flags per invocation (separate shells shouldn't inherit state)
     shell_set_errexit(0);
     shell_set_xtrace(0);
-    shell_interactive = 1;
+    shell_interactive = isatty(STDIN_FILENO) ? 1 : 0;
     shell_running = 1; // ensure a fresh loop for each invocation
     // Ensure stdin stream flags are clear (tests may have hit EOF earlier)
     clearerr(stdin);
@@ -200,6 +207,10 @@ int shell_main(int argc, char **argv) {
     while (shell_running) {
         // Be defensive each iteration in case callers swap stdin between loops
         clearerr(stdin);
+        // Drain any background children if interactive
+        if (shell_interactive) {
+            jobs_reap_background();
+        }
         shell_print_prompt(multiline_length);
 
         if ((read = getline(&line, &len, stdin)) == -1) {

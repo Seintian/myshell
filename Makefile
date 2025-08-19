@@ -3,7 +3,7 @@
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -g -Iinclude
-LDFLAGS = -ldl
+LDFLAGS = -ldl -lpthread
 
 # Directories
 SRCDIR = src
@@ -47,7 +47,7 @@ $(BINDIR):
 
 # Main executable
 $(TARGET): $(BUILDDIR) $(BINDIR) $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
 
 # Object files
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
@@ -103,11 +103,11 @@ test-util: $(BUILDDIR)/test_util_unity.o $(UNITY_OBJ) $(filter-out $(BUILDDIR)/m
 
 # Debug build
 debug: CFLAGS += -DDEBUG -O0
-debug: clean all
+debug: clean $(TARGET)
 
 # Release build
 release: CFLAGS += -O2 -DNDEBUG
-release: clean all
+release: clean $(TARGET)
 
 # Install (optional)
 install: $(TARGET)
@@ -125,7 +125,7 @@ uninstall:
 # Clean build files
 clean:
 	rm -rf $(BUILDDIR)
-	rm -f $(TARGET)
+	rm -rf $(BINDIR)
 
 # Clean everything including backups
 distclean: clean
@@ -292,7 +292,7 @@ memcheck-simple: $(TARGET)
 # AddressSanitizer build (alternative to valgrind)
 asan: CFLAGS += -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -O1
 asan: LDFLAGS += -fsanitize=address -fsanitize=undefined
-asan: clean all
+asan: clean $(TARGET)
 	@echo "Built with AddressSanitizer. Run with: ./$(TARGET)"
 	@echo "AddressSanitizer will detect memory errors at runtime."
 	@echo "Set ASAN_OPTIONS=abort_on_error=1 to stop on first error."

@@ -19,17 +19,25 @@ redir_t *redir_create(redir_type_t type, int fd, const char *filename) {
 }
 
 static int open_and_dup(const char *path, int oflags, mode_t mode, int target_fd) {
-    int file_fd = (oflags & O_CREAT) ? open(path, oflags, mode) : open(path, oflags);
+    int file_fd = (oflags & O_CREAT) ? open(path, oflags | O_CLOEXEC, mode) : open(path, oflags | O_CLOEXEC);
     if (file_fd == -1) {
         perror("open");
         return -1;
     }
-    if (dup2(file_fd, target_fd) == -1) {
-        perror("dup2");
+    if (file_fd != target_fd) {
+        if (dup2(file_fd, target_fd) == -1) {
+            perror("dup2");
+            close(file_fd);
+            return -1;
+        }
         close(file_fd);
-        return -1;
+    } else {
+        // If open returned the same fd as the target, ensure CLOEXEC is cleared
+        int flags = fcntl(target_fd, F_GETFD);
+        if (flags != -1) {
+            (void)fcntl(target_fd, F_SETFD, flags & ~FD_CLOEXEC);
+        }
     }
-    close(file_fd);
     return 0;
 }
 

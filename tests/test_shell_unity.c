@@ -299,7 +299,7 @@ void test_shell_set_builtin_toggles_flags(void) {
     TEST_ASSERT_EQUAL(0, rc);
     unlink(path3);
     free(path3);
-    
+
     char *path4 = write_temp_script("set -x\nset +x\nexit 0\n");
     char *argvv4[] = {"myshell", path4, NULL};
     rc = shell_main(2, argvv4);

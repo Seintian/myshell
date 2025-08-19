@@ -3,6 +3,7 @@
  * @brief Terminal helpers: raw/cooked modes, cursor ops, and signals.
  */
 #include "term.h"
+#include "jobs.h"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,10 @@ static void sigint_handler(int sig __attribute__((unused))) {
     // Handle Ctrl+C
     printf("\n");
 }
+/** SIGCHLD handler: set flag for background reaper. */
+static void sigchld_handler(int sig __attribute__((unused))) {
+    jobs_notify_sigchld();
+}
 
 /** SIGTSTP handler printing a note about stop. */
 static void sigtstp_handler(int sig __attribute__((unused))) {
@@ -30,11 +35,18 @@ static void sigtstp_handler(int sig __attribute__((unused))) {
 void term_setup_signals(void) {
     signal(SIGINT, sigint_handler);
     signal(SIGTSTP, sigtstp_handler);
+    signal(SIGCHLD, sigchld_handler);
+    // The shell should not be stopped by terminal IO while in background
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
 }
 
 void term_restore_signals(void) {
     signal(SIGINT, SIG_DFL);
     signal(SIGTSTP, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
 }
 
 int term_raw_mode(void) {

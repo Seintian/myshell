@@ -1,8 +1,8 @@
 #include "jobs.h"
 #include "unity.h"
+#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 void test_job_create(void) {
     pid_t test_pgid = 1234;
@@ -20,8 +20,7 @@ void test_job_create_null_command(void) {
     job_t *job = job_create(test_pgid, NULL);
 
     // Should handle NULL command gracefully (implementation dependent)
-    // This test ensures no crash occurs
-    TEST_ASSERT_TRUE(1); // If we get here, no crash occurred
+    TEST_ASSERT_NULL(job);
 }
 
 void test_job_set_status(void) {
