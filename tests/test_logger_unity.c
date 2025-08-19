@@ -46,7 +46,7 @@ void test_logger_disabled_env(void) {
 static void vlog_helper(log_level_t lvl, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    logger_vlog(lvl, fmt, ap);
+    logger_vlog(lvl, __FILE__, fmt, ap);
     va_end(ap);
 }
 

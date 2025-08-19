@@ -22,13 +22,13 @@ void logger_shutdown(void); // joins background thread
 void logger_set_level(log_level_t level);
 log_level_t logger_get_level(void);
 
-void logger_log(log_level_t level, const char *fmt, ...);
-void logger_vlog(log_level_t level, const char *fmt, va_list ap);
+void logger_log(log_level_t level, const char *path, const char *fmt, ...);
+void logger_vlog(log_level_t level, const char *path, const char *fmt, va_list ap);
 
-#define LOG_ERROR(...) logger_log(LOG_LEVEL_ERROR, __VA_ARGS__)
-#define LOG_WARN(...) logger_log(LOG_LEVEL_WARN, __VA_ARGS__)
-#define LOG_INFO(...) logger_log(LOG_LEVEL_INFO, __VA_ARGS__)
-#define LOG_DEBUG(...) logger_log(LOG_LEVEL_DEBUG, __VA_ARGS__)
-#define LOG_TRACE(...) logger_log(LOG_LEVEL_TRACE, __VA_ARGS__)
+#define LOG_ERROR(...) logger_log(LOG_LEVEL_ERROR, __FILE__, __VA_ARGS__)
+#define LOG_WARN(...) logger_log(LOG_LEVEL_WARN, __FILE__, __VA_ARGS__)
+#define LOG_INFO(...) logger_log(LOG_LEVEL_INFO, __FILE__, __VA_ARGS__)
+#define LOG_DEBUG(...) logger_log(LOG_LEVEL_DEBUG, __FILE__, __VA_ARGS__)
+#define LOG_TRACE(...) logger_log(LOG_LEVEL_TRACE, __FILE__, __VA_ARGS__)
 
 #endif // LOGGER_H

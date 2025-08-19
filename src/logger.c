@@ -15,6 +15,7 @@
 
 typedef struct {
     log_level_t level;
+    char path[FILENAME_MAX]; // Path to the source file
     char msg[LOG_MSG_MAX];
 } log_item_t;
 
@@ -68,10 +69,11 @@ static void *log_consumer(void *arg) {
         char tbuf[32];
         strftime(tbuf, sizeof tbuf, "%H:%M:%S", &tm);
         fprintf(stderr,
-                "%s.%03ld [%s] %s\n",
+                "%s.%06ld [%s] %s: %s\n",
                 tbuf,
-                ts.tv_nsec / 1000000,
+                ts.tv_nsec / 1000,
                 lvl_name(item.level),
+                item.path,
                 item.msg);
     }
     return NULL;
@@ -121,7 +123,7 @@ log_level_t logger_get_level(void) {
     return current_level;
 }
 
-static void enqueue(log_level_t level, const char *buf) {
+static void enqueue(log_level_t level, const char *path, const char *buf) {
     pthread_mutex_lock(&log_mu);
     if (q_size == LOG_QUEUE_CAP) {
         // Drop oldest (bounded queue)
@@ -130,26 +132,36 @@ static void enqueue(log_level_t level, const char *buf) {
     }
     size_t idx = (q_head + q_size) % LOG_QUEUE_CAP;
     queue[idx].level = level;
-    strncpy(queue[idx].msg, buf, LOG_MSG_MAX - 1);
+    if (path) {
+        strncpy(queue[idx].path, path, FILENAME_MAX - 1);
+        queue[idx].path[FILENAME_MAX - 1] = '\0';
+    } else {
+        queue[idx].path[0] = '\0'; // No path
+    }
+    if (buf) {
+        strncpy(queue[idx].msg, buf, LOG_MSG_MAX - 1);
+    } else {
+        queue[idx].msg[0] = '\0'; // No message
+    }
     queue[idx].msg[LOG_MSG_MAX - 1] = '\0';
     q_size++;
     pthread_cond_signal(&log_cv);
     pthread_mutex_unlock(&log_mu);
 }
 
-void logger_vlog(log_level_t level, const char *fmt, va_list ap) {
+void logger_vlog(log_level_t level, const char *path, const char *fmt, va_list ap) {
     if (!logger_enabled)
         return;
     if (level > current_level || level == LOG_LEVEL_OFF)
         return;
     char buf[LOG_MSG_MAX];
     vsnprintf(buf, sizeof buf, fmt, ap);
-    enqueue(level, buf);
+    enqueue(level, path, buf);
 }
 
-void logger_log(log_level_t level, const char *fmt, ...) {
+void logger_log(log_level_t level, const char *path, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    logger_vlog(level, fmt, ap);
+    logger_vlog(level, path, fmt, ap);
     va_end(ap);
 }
