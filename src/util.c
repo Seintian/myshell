@@ -126,11 +126,7 @@ int is_executable(const char *path) {
     if (!path)
         return 0;
 
-    struct stat st;
-    if (stat(path, &st) == 0) {
-        return (st.st_mode & S_IXUSR) != 0;
-    }
-    return 0;
+    return access(path, X_OK) == 0 ? 1 : 0;
 }
 
 void debug_print(const char *format, ...) {

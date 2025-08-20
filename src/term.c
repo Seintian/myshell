@@ -16,10 +16,11 @@ static struct termios original_termios;
 /** Whether original_termios has been captured. */
 static int termios_saved = 0;
 
-/** SIGINT handler printing a newline to keep prompt tidy. */
+/** SIGINT handler printing a newline to keep prompt tidy.
+ *  Note: Use only async-signal-safe functions here. */
 static void sigint_handler(int sig __attribute__((unused))) {
-    // Handle Ctrl+C
-    printf("\n");
+    const char nl = '\n';
+    (void)write(STDOUT_FILENO, &nl, 1);
 }
 /** SIGCHLD handler: set flag for background reaper. */
 static void sigchld_handler(int sig __attribute__((unused))) {
@@ -28,8 +29,8 @@ static void sigchld_handler(int sig __attribute__((unused))) {
 
 /** SIGTSTP handler printing a note about stop. */
 static void sigtstp_handler(int sig __attribute__((unused))) {
-    // Handle Ctrl+Z
-    printf("\n[Stopped]\n");
+    static const char msg[] = "\n[Stopped]\n";
+    (void)write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 }
 
 void term_setup_signals(void) {

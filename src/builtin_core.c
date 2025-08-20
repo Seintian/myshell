@@ -7,6 +7,7 @@
 #include "jobs.h"
 #include "shell.h"
 #include "util.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -180,6 +181,18 @@ int builtin_type(int argc, char **argv) {
     return 0;
 }
 
+int builtin_source(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "source: filename argument required\n");
+        return 2;
+    }
+
+    const char *path = argv[1];
+    // Execute file in current shell context using shell_run_file
+    int rc = shell_run_file(path);
+    return rc;
+}
+
 static int builtin_set(int argc, char **argv) {
     // Support: set -e | +e | -x | +x
     if (argc < 2) {
@@ -214,6 +227,7 @@ static builtin_t builtins[] = {
     {"fg", builtin_fg, "Bring job to foreground"},
     {"bg", builtin_bg, "Put job in background"},
     {"type", builtin_type, "Display command type"},
+    {"source", builtin_source, "Source and execute commands from a file"},
     {"set", builtin_set, "Set shell options: -e/+e, -x/+x"},
     {NULL, NULL, NULL}};
 

@@ -128,6 +128,10 @@ int exec_command(ast_command_t *cmd) {
 
     // Expand variables in all arguments
     char **expanded_argv = expand_argv(argv);
+    if (!expanded_argv || !expanded_argv[0]) {
+        free_string_array(expanded_argv);
+        return -1;
+    }
     int argc = string_array_length(expanded_argv);
 
     // Check for builtin commands

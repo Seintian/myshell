@@ -132,7 +132,9 @@ int evloop_run(evloop_t *loop, int timeout_ms) {
         for (int i = 0; i < nfds && loop->running; i++) {
             struct evloop_fd *evfd = (struct evloop_fd *)events[i].data.ptr;
             if (evfd && evfd->callback) {
-                evfd->callback(evfd->fd, evfd->data);
+                int fd = evfd->fd;
+                void *data = evfd->data;
+                evfd->callback(fd, data);
             }
         }
     }

@@ -144,25 +144,24 @@ int evloop_run(evloop_t *loop, int timeout_ms) {
         // Process ready file descriptors
         current = loop->fds;
         while (current && loop->running) {
+            // Save next before invoking callback in case the callback removes this fd
+            struct evloop_fd *next = current->next;
+
             int fd_ready = 0;
 
-            if (FD_ISSET(current->fd, &readfds) && (current->events & EVLOOP_READ)) {
+            if (FD_ISSET(current->fd, &readfds) && (current->events & EVLOOP_READ))
                 fd_ready = 1;
-            }
-            if (FD_ISSET(current->fd, &writefds) &&
-                (current->events & EVLOOP_WRITE)) {
-                fd_ready = 1;
-            }
-            if (FD_ISSET(current->fd, &errorfds) &&
-                (current->events & EVLOOP_ERROR)) {
-                fd_ready = 1;
-            }
 
-            if (fd_ready) {
+            if (FD_ISSET(current->fd, &writefds) && (current->events & EVLOOP_WRITE))
+                fd_ready = 1;
+
+            if (FD_ISSET(current->fd, &errorfds) && (current->events & EVLOOP_ERROR))
+                fd_ready = 1;
+
+            if (fd_ready)
                 current->callback(current->fd, current->data);
-            }
 
-            current = current->next;
+            current = next;
         }
     }
 

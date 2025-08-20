@@ -48,6 +48,8 @@ int builtin_fg(int argc, char **argv);
 int builtin_bg(int argc, char **argv);
 /** Report how a command name would be resolved. */
 int builtin_type(int argc, char **argv);
+/** Source commands from a file into the current shell. */
+int builtin_source(int argc, char **argv);
 
 /** @} */
 

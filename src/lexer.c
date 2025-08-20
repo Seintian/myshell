@@ -24,19 +24,17 @@ lexer_t *lexer_create(const char *input) {
 }
 
 static void skip_whitespace(lexer_t *lexer) {
-    while (lexer->pos < lexer->length && isspace(lexer->input[lexer->pos])) {
+    while (lexer->pos < lexer->length && isspace((unsigned char)lexer->input[lexer->pos]))
         lexer->pos++;
-    }
 }
 
 static char *read_word(lexer_t *lexer) {
     size_t start = lexer->pos;
-    while (lexer->pos < lexer->length && !isspace(lexer->input[lexer->pos]) &&
+    while (lexer->pos < lexer->length && !isspace((unsigned char)lexer->input[lexer->pos]) &&
            lexer->input[lexer->pos] != '|' && lexer->input[lexer->pos] != '<' &&
            lexer->input[lexer->pos] != '>' && lexer->input[lexer->pos] != '&' &&
-           lexer->input[lexer->pos] != ';') {
+           lexer->input[lexer->pos] != ';')
         lexer->pos++;
-    }
 
     size_t len = lexer->pos - start;
     char *word = malloc_safe(len + 1);

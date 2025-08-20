@@ -20,6 +20,9 @@ struct plugin {
 static plugin_t *_plugin_list = NULL;
 
 int plugin_load(const char *path) {
+    if (!path)
+        return -1;
+
     void *handle = dlopen(path, RTLD_LAZY);
     if (!handle) {
         fprintf(stderr, "Cannot load plugin %s: %s\n", path, dlerror());
@@ -60,6 +63,9 @@ int plugin_load(const char *path) {
 }
 
 int plugin_unload(const char *name) {
+    if (!name)
+        return -1;
+
     plugin_t *current = _plugin_list;
     plugin_t *prev = NULL;
 
@@ -94,6 +100,9 @@ int plugin_unload(const char *name) {
 }
 
 plugin_t *plugin_find(const char *name) {
+    if (!name)
+        return NULL;
+
     plugin_t *current = _plugin_list;
     while (current) {
         if (strcmp(current->name, name) == 0) {
@@ -105,6 +114,9 @@ plugin_t *plugin_find(const char *name) {
 }
 
 int plugin_execute(const char *name, int argc, char **argv) {
+    if (!name)
+        return -1;
+
     plugin_t *plugin = plugin_find(name);
     if (plugin && plugin->info->execute) {
         return plugin->info->execute(argc, argv);
