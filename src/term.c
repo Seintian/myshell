@@ -4,12 +4,14 @@
  */
 #include "term.h"
 #include "jobs.h"
+#include "util.h"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <errno.h>
 
 /** Saved terminal attributes to restore cooked mode. */
 static struct termios original_termios;
@@ -20,7 +22,7 @@ static int termios_saved = 0;
  *  Note: Use only async-signal-safe functions here. */
 static void sigint_handler(int sig __attribute__((unused))) {
     const char nl = '\n';
-    (void)write(STDOUT_FILENO, &nl, 1);
+    sig_safe_write(STDOUT_FILENO, &nl, 1);
 }
 /** SIGCHLD handler: set flag for background reaper. */
 static void sigchld_handler(int sig __attribute__((unused))) {
@@ -30,7 +32,7 @@ static void sigchld_handler(int sig __attribute__((unused))) {
 /** SIGTSTP handler printing a note about stop. */
 static void sigtstp_handler(int sig __attribute__((unused))) {
     static const char msg[] = "\n[Stopped]\n";
-    (void)write(STDOUT_FILENO, msg, sizeof(msg) - 1);
+    sig_safe_write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 }
 
 void term_setup_signals(void) {

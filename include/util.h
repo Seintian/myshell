@@ -36,6 +36,9 @@ int is_executable(const char *path);
 /** Print a formatted debug line to stderr if SHELL_DEBUG is set. */
 void debug_print(const char *format, ...);
 
+// Async-signal-safe write (best-effort, retries once on EINTR)
+void sig_safe_write(int fd, const void *buf, size_t len);
+
 /** @} */
 
 #endif // UTIL_H

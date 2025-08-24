@@ -29,7 +29,6 @@ static void skip_whitespace(lexer_t *lexer) {
 }
 
 static char *read_word(lexer_t *lexer) {
-    size_t start = lexer->pos;
     int in_single = 0, in_double = 0;
     // Accumulate into dynamic buffer to handle quotes/escapes
     size_t cap = 32;

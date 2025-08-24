@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
 
 char *strdup_safe(const char *str) {
     if (!str)
@@ -138,4 +139,10 @@ void debug_print(const char *format, ...) {
         fprintf(stderr, "\n");
         va_end(args);
     }
+}
+
+void sig_safe_write(int fd, const void *buf, size_t len) {
+    ssize_t r;
+    do { r = write(fd, buf, len); } while (r < 0 && errno == EINTR);
+    (void)r; // best-effort
 }

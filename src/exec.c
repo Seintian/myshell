@@ -8,6 +8,7 @@
 #include "plugin.h"
 #include "jobs.h"
 #include "util.h"
+#include "ast.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -274,6 +275,24 @@ void ast_free(ast_node_t *node) {
     free(node);
 }
 
+// Safely apply a redirection: if the opened fd equals the target, clear CLOEXEC;
+// otherwise dup2 and close the source fd.
+static inline void dup2_or_clear_cloexec(int src_fd, int target_fd) {
+    if (src_fd < 0) return;
+    if (src_fd == target_fd) {
+        int flags = fcntl(target_fd, F_GETFD);
+        if (flags != -1) {
+            (void)fcntl(target_fd, F_SETFD, flags & ~FD_CLOEXEC);
+        }
+        return;
+    }
+    if (dup2(src_fd, target_fd) == -1) {
+        perror("dup2");
+        // best effort: close src_fd regardless
+    }
+    close(src_fd);
+}
+
 int exec_command(ast_command_t *cmd) {
     // Cast for simplicity
     ast_node_t *node = (ast_node_t *)cmd;
@@ -328,15 +347,15 @@ int exec_command(ast_command_t *cmd) {
                                     break;
                                 }
                                 // Write the line and a newline back
-                                if (nread > 0) (void)write(p[1], line, (size_t)nread);
-                                (void)write(p[1], "\n", 1);
+                                if (nread > 0) { sig_safe_write(p[1], line, (size_t)nread); }
+                                sig_safe_write(p[1], "\n", 1);
                             }
                             free(line);
                             close(p[1]);
                             f = p[0];
                         }
                     }
-                    if (f >= 0) { dup2(f, fd); close(f); }
+                    if (f >= 0) { dup2_or_clear_cloexec(f, fd); }
                 }
                 int rc = builtin_execute(expanded_argv[0], argc, expanded_argv);
                 _exit(rc & 0xFF);
@@ -391,15 +410,15 @@ int exec_command(ast_command_t *cmd) {
                                 nread--;
                             }
                             if (strcmp(line, fn) == 0) break;
-                            if (nread > 0) (void)write(p[1], line, (size_t)nread);
-                            (void)write(p[1], "\n", 1);
+                            if (nread > 0) { sig_safe_write(p[1], line, (size_t)nread); }
+                            sig_safe_write(p[1], "\n", 1);
                         }
                         free(line);
                         close(p[1]);
                         f = p[0];
                     }
                 }
-                if (f >= 0) { dup2(f, fd); close(f); }
+                if (f >= 0) { dup2_or_clear_cloexec(f, fd); }
             }
             execvp(expanded_argv[0], expanded_argv);
             perror("execvp");
