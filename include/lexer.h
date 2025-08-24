@@ -12,11 +12,17 @@
 typedef enum {
     TOKEN_WORD,            /**< Plain word (command or arg). */
     TOKEN_PIPE,            /**< '|' character. */
+    TOKEN_OR_IF,           /**< '||' logical OR. */
+    TOKEN_AND_IF,          /**< '&&' logical AND. */
     TOKEN_REDIRECT_IN,     /**< '<' redirection. */
     TOKEN_REDIRECT_OUT,    /**< '>' redirection. */
     TOKEN_REDIRECT_APPEND, /**< '>>' redirection. */
+    TOKEN_HEREDOC,         /**< '<<' here-doc operator. */
+    TOKEN_REDIRECT_AND_OUT,/**< '&>' redirect stdout+stderr. */
     TOKEN_BACKGROUND,      /**< '&' background. */
     TOKEN_SEMICOLON,       /**< ';' sequence separator. */
+    TOKEN_LPAREN,          /**< '(' open subshell/group. */
+    TOKEN_RPAREN,          /**< ')' close subshell/group. */
     TOKEN_EOF              /**< End of input. */
 } token_type_t;
 

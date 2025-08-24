@@ -30,17 +30,34 @@ static void skip_whitespace(lexer_t *lexer) {
 
 static char *read_word(lexer_t *lexer) {
     size_t start = lexer->pos;
-    while (lexer->pos < lexer->length && !isspace((unsigned char)lexer->input[lexer->pos]) &&
-           lexer->input[lexer->pos] != '|' && lexer->input[lexer->pos] != '<' &&
-           lexer->input[lexer->pos] != '>' && lexer->input[lexer->pos] != '&' &&
-           lexer->input[lexer->pos] != ';')
+    int in_single = 0, in_double = 0;
+    // Accumulate into dynamic buffer to handle quotes/escapes
+    size_t cap = 32;
+    char *buf = malloc_safe(cap);
+    size_t out = 0;
+    while (lexer->pos < lexer->length) {
+        char c = lexer->input[lexer->pos];
+        if (!in_single && !in_double) {
+            if (isspace((unsigned char)c) || c == '|' || c == '<' || c == '>' || c == '&' || c == ';')
+                break;
+            if (c == '\'' ) { in_single = 1; lexer->pos++; continue; }
+            if (c == '"' ) { in_double = 1; lexer->pos++; continue; }
+        } else if (in_single) {
+            if (c == '\'') { lexer->pos++; in_single = 0; continue; }
+        } else if (in_double) {
+            if (c == '"') { lexer->pos++; in_double = 0; continue; }
+            if (c == '\\' && lexer->pos + 1 < lexer->length) {
+                // support simple escapes inside double quotes
+                lexer->pos++;
+                c = lexer->input[lexer->pos];
+            }
+        }
+        if (out + 2 > cap) { cap *= 2; buf = realloc_safe(buf, cap); }
+        buf[out++] = c;
         lexer->pos++;
-
-    size_t len = lexer->pos - start;
-    char *word = malloc_safe(len + 1);
-    strncpy(word, &lexer->input[start], len);
-    word[len] = '\0';
-    return word;
+    }
+    buf[out] = '\0';
+    return buf;
 }
 
 token_t *lexer_next_token(lexer_t *lexer) {
@@ -56,21 +73,50 @@ token_t *lexer_next_token(lexer_t *lexer) {
     token_t *token = malloc_safe(sizeof(token_t));
     char ch = lexer->input[lexer->pos];
 
+    // Support numeric FD prefix for redirections (e.g., 2>)
+    if (isdigit((unsigned char)ch)) {
+        size_t save = lexer->pos;
+        while (lexer->pos < lexer->length && isdigit((unsigned char)lexer->input[lexer->pos]))
+            lexer->pos++;
+        if (lexer->pos < lexer->length && (lexer->input[lexer->pos] == '>' || lexer->input[lexer->pos] == '<')) {
+            // roll back and treat as WORD; parser can interpret numeric fd before redir
+            lexer->pos = save;
+        } else {
+            lexer->pos = save;
+        }
+    }
+
     switch (ch) {
     case '|':
-        token->type = TOKEN_PIPE;
-        token->value = strdup_safe("|");
-        lexer->pos++;
+        if (lexer->pos + 1 < lexer->length && lexer->input[lexer->pos + 1] == '|') {
+            token->type = TOKEN_OR_IF;
+            token->value = strdup_safe("||");
+            lexer->pos += 2;
+        } else {
+            token->type = TOKEN_PIPE;
+            token->value = strdup_safe("|");
+            lexer->pos++;
+        }
         break;
     case '<':
-        token->type = TOKEN_REDIRECT_IN;
-        token->value = strdup_safe("<");
-        lexer->pos++;
+        if (lexer->pos + 1 < lexer->length && lexer->input[lexer->pos + 1] == '<') {
+            token->type = TOKEN_HEREDOC;
+            token->value = strdup_safe("<<");
+            lexer->pos += 2;
+        } else {
+            token->type = TOKEN_REDIRECT_IN;
+            token->value = strdup_safe("<");
+            lexer->pos++;
+        }
         break;
     case '>':
         if (lexer->pos + 1 < lexer->length && lexer->input[lexer->pos + 1] == '>') {
             token->type = TOKEN_REDIRECT_APPEND;
             token->value = strdup_safe(">>");
+            lexer->pos += 2;
+        } else if (lexer->pos + 1 < lexer->length && lexer->input[lexer->pos + 1] == '&') {
+            token->type = TOKEN_REDIRECT_AND_OUT;
+            token->value = strdup_safe("&>");
             lexer->pos += 2;
         } else {
             token->type = TOKEN_REDIRECT_OUT;
@@ -79,13 +125,29 @@ token_t *lexer_next_token(lexer_t *lexer) {
         }
         break;
     case '&':
-        token->type = TOKEN_BACKGROUND;
-        token->value = strdup_safe("&");
-        lexer->pos++;
+        if (lexer->pos + 1 < lexer->length && lexer->input[lexer->pos + 1] == '&') {
+            token->type = TOKEN_AND_IF;
+            token->value = strdup_safe("&&");
+            lexer->pos += 2;
+        } else {
+            token->type = TOKEN_BACKGROUND;
+            token->value = strdup_safe("&");
+            lexer->pos++;
+        }
         break;
     case ';':
         token->type = TOKEN_SEMICOLON;
         token->value = strdup_safe(";");
+        lexer->pos++;
+        break;
+    case '(':
+        token->type = TOKEN_LPAREN;
+        token->value = strdup_safe("(");
+        lexer->pos++;
+        break;
+    case ')':
+        token->type = TOKEN_RPAREN;
+        token->value = strdup_safe(")");
         lexer->pos++;
         break;
     default:

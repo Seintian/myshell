@@ -1,9 +1,11 @@
 #include "env.h"
+#include "shell.h"
 #include "util.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 char *expand_variables(const char *str) {
     // Simple variable expansion implementation
@@ -30,6 +32,26 @@ char *expand_variables(const char *str) {
 
     for (size_t i = 0; i < len; i++) {
         if (str[i] == '$' && i + 1 < len) {
+            // Special parameters: $? and $$
+            if (str[i + 1] == '?') {
+                char buf[16];
+                snprintf(buf, sizeof buf, "%d", shell_get_last_status());
+                size_t vl = strlen(buf);
+                ENSURE_CAP(vl);
+                memcpy(&result[result_pos], buf, vl);
+                result_pos += vl;
+                i += 1;
+                continue;
+            } else if (str[i + 1] == '$') {
+                char buf[32];
+                snprintf(buf, sizeof buf, "%ld", (long)getpid());
+                size_t vl = strlen(buf);
+                ENSURE_CAP(vl);
+                memcpy(&result[result_pos], buf, vl);
+                result_pos += vl;
+                i += 1;
+                continue;
+            }
             // Simple variable name extraction
             size_t var_start = i + 1;
             size_t var_end = var_start;
@@ -57,7 +79,7 @@ char *expand_variables(const char *str) {
             }
         }
 
-        // Default: copy the character as-is
+    // Default: copy the character as-is
         ENSURE_CAP(1);
         result[result_pos++] = str[i];
     }

@@ -72,6 +72,9 @@ void shell_set_xtrace(int on);
 int shell_get_errexit(void);
 int shell_get_xtrace(void);
 
+/** Return the last command status tracked by the shell. */
+int shell_get_last_status(void);
+
 /**
  * @brief Initialize shell subsystems (signals, plugins, builtins).
  *

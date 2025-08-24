@@ -25,6 +25,8 @@ int shell_interactive = 1;
 int shell_flag_errexit = 0;
 /** -x: trace commands */
 int shell_flag_xtrace = 0;
+/** Last command status tracked by the shell. */
+static int shell_last_status = 0;
 
 void shell_init(void) {
     // Initialize terminal
@@ -122,6 +124,7 @@ static int execute_line(const char *line_in) {
     }
     parser_free(parser);
     lexer_free(lexer);
+    shell_last_status = rc;
     return rc;
 }
 
@@ -148,7 +151,7 @@ int shell_run_file(const char *path) {
             line[read - 1] = '\0';
         if (line[0] == '\0')
             continue;
-        last_status = execute_line(line);
+    last_status = execute_line(line);
         if (shell_flag_errexit && last_status != 0) {
             break;
         }
@@ -283,5 +286,10 @@ int shell_main(int argc, char **argv) {
     if (line) {
         free(line);
     }
+    shell_last_status = exit_code;
     return exit_code;
+}
+
+int shell_get_last_status(void) {
+    return shell_last_status;
 }

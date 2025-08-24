@@ -217,6 +217,7 @@ static int builtin_set(int argc, char **argv) {
 }
 
 // Builtin registry
+// Reserve a couple of extra slots for dynamic registration
 static builtin_t builtins[] = {
     {"cd", builtin_cd, "Change directory"},
     {"exit", builtin_exit, "Exit the shell"},
@@ -229,6 +230,7 @@ static builtin_t builtins[] = {
     {"type", builtin_type, "Display command type"},
     {"source", builtin_source, "Source and execute commands from a file"},
     {"set", builtin_set, "Set shell options: -e/+e, -x/+x"},
+    {NULL, NULL, NULL}, // slot 1
     {NULL, NULL, NULL}};
 
 builtin_t *builtin_find(const char *name) {
@@ -255,5 +257,31 @@ int builtin_execute(const char *name, int argc, char **argv) {
 void builtin_list(void) {
     for (int i = 0; builtins[i].name; i++) {
         printf("%-10s %s\n", builtins[i].name, builtins[i].description);
+    }
+}
+
+int builtin_register(const char *name, builtin_func_t func, const char *description) {
+    if (!name || !func) return -1;
+    // Avoid duplicates
+    if (builtin_find(name)) return -1;
+    // Find a NULL slot (excluding final sentinel)
+    for (int i = 0; ; ++i) {
+        if (builtins[i].name == NULL) {
+            // Check if next is sentinel (end of array)
+            if (builtins[i+1].name == NULL && builtins[i+1].func == NULL) {
+                // We're at the last sentinel; use this slot and move sentinel one step
+                builtins[i].name = strdup_safe(name);
+                builtins[i].func = func;
+                builtins[i].description = description ? strdup_safe(description) : "";
+                // Ensure trailing sentinel is present one after
+                // (array already has one extra NULL slot)
+                return 0;
+            } else {
+                builtins[i].name = strdup_safe(name);
+                builtins[i].func = func;
+                builtins[i].description = description ? strdup_safe(description) : "";
+                return 0;
+            }
+        }
     }
 }
